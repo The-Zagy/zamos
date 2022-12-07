@@ -6,7 +6,7 @@
           "dom",
           "es2021"
       ],
-      "sourceMap": false,
+      "sourceMap": true,
       "outDir": "dist",
       "rootDir": "src",
       "strict": true,
