@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+      "target": "es2021",
+      "module": "CommonJS",
+      "lib": [
+          "dom",
+          "es2021"
+      ],
+      "sourceMap": false,
+      "outDir": "dist",
+      "rootDir": "src",
+      "strict": true,
+      "types": [
+          "node"
+      ],
+      "esModuleInterop": true,
+      "moduleResolution": "node",
+      "resolveJsonModule": true,
+      "baseUrl": ".",
+      "allowSyntheticDefaultImports": true,
+      "noUnusedLocals": true,
+      "noUnusedParameters": true,
+      "noImplicitReturns": true,
+      "noFallthroughCasesInSwitch": true,
+      "removeComments": true,
+      "allowJs": true
+  },
+  "include":["src"],
+  "exclude":["node_modules"]
+}
