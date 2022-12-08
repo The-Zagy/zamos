@@ -5,9 +5,10 @@ export enum ProcessStatus  {
 
 }
 export interface Process {
-    name: string;
     pid: number;
     arrivalTime: number;
+    finishTime: number;
+    firstRunTime: number;
     length?: number;
     status: ProcessStatus
 }
