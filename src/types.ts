@@ -9,7 +9,7 @@ export interface Process {
     arrivalTime: number;
     finishTime: number;
     firstRunTime: number;
-    length?: number;
+    executionTime: number;
     status: ProcessStatus
 }
 export interface SchedulerRtrn {

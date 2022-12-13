@@ -1,30 +1,37 @@
-import { Process, SchedulerRtrn } from "./types";
-import { createRandowScene } from "./utils";
-const processQue: Process[] = []; 
-function FIFO(): SchedulerRtrn {
-    // TODO all arrive at the same time CHANGE ME DADDY
+import { Process, ProcessStatus, SchedulerRtrn } from "./types";
+import {scene} from './scene.json'
+import { calcResponseTime, calcTurnAroundTime } from "./utils";
+
+let processQue: Process[]; 
+function FIFO(processQue: Process[]): SchedulerRtrn {
     let turnAround = 0;
+    // to keep track where we're in the time
     let curTimeSlice = 0;
     let responseTime = 0;
-    createRandowScene(processQue);
     console.log('FIFO');
+    // Sort array by arrival time because FIFO policy is first in first out (by arrival time)..
+    processQue = processQue.sort((a, b) => (a.arrivalTime - b.arrivalTime));
+
     // calc turnAround
-    for (let prc of processQue) {
-        if (!prc.length) throw new Error('process length missing');
-        //* this part show example what algo resonsible to do in this demo
-        prc.finishTime = (curTimeSlice + prc.length);
-        prc.firstRunTime = curTimeSlice;
-        // all calclutions depend on the assumbtions that all processes arrive at the same time
-        turnAround += (prc.length + curTimeSlice);
-        responseTime += curTimeSlice;
-        curTimeSlice += prc.length;
+    for (const proc of processQue) {
+        proc.status = ProcessStatus.RUNNING
+        //! log processes MONITOR 
+        // to remove the gap if one process arrivaltime is late after the curtimeslice
+        if (proc.arrivalTime > curTimeSlice) curTimeSlice = proc.arrivalTime;
+        proc.finishTime = curTimeSlice + proc.executionTime;
+        proc.firstRunTime = curTimeSlice;
+        curTimeSlice += proc.executionTime;
+        console.log(calcTurnAroundTime(proc), calcResponseTime(proc))
     }
-    turnAround /= processQue.length;
-    responseTime /= processQue.length;
     console.log(`turn around time = ${turnAround}\nresponse time = ${responseTime}`);
     return {
         responseTime,
         turnAround
     }
 }
-FIFO()
+
+function main() {
+    processQue = (scene as unknown) as Process[];    
+    FIFO(processQue);
+}
+main()

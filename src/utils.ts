@@ -1,5 +1,12 @@
 import { Process, ProcessStatus } from './types';
 import { faker } from '@faker-js/faker';
+import config from './config';
+export function calcTurnAroundTime(proc:Process):number{
+    return proc.finishTime- proc.arrivalTime;
+}
+export function calcResponseTime(proc:Process):number{
+    return proc.firstRunTime - proc.arrivalTime;
+}
 export function createProcess(): Process {
     // TODO make sure that pid is unique or easy enough use uuid, another idea use var that start from zero and inc it each time normal int var is enough in our case 
     //TODO edit arrival time
@@ -8,9 +15,9 @@ export function createProcess(): Process {
         arrivalTime: 0,
         finishTime: -1,
         firstRunTime: -1,
-        pid: faker.datatype.number(1000),
+        pid: config.id++,
         status: ProcessStatus.READY,
-        length: faker.datatype.number(50)
+        executionTime: faker.datatype.number(50)
     }
 }
 export function createRandowScene(que: Process[]): void {
