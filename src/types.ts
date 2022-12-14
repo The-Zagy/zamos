@@ -1,4 +1,4 @@
-export enum ProcessStatus  {
+export enum ProcessStatus {
     RUNNING = 'running',
     READY = 'ready',
     BLOCKED = 'blocked'
@@ -12,7 +12,11 @@ export interface Process {
     executionTime: number;
     status: ProcessStatus
 }
-export interface SchedulerRtrn {
-    turnAround: number;
-    responseTime: number;
+export type ProcessFinalStats = { turnaround: number, responseTime: number, pid: number }
+export type ProcessesFinalStats = Array<ProcessFinalStats>
+export type Interval = { start: number, finish: number, pid: number }
+export type Intervals = Array<Interval>
+export interface SchedulerReturn {
+    processesData: ProcessesFinalStats
+    intervals: Intervals
 }
