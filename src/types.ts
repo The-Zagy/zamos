@@ -12,11 +12,15 @@ export interface Process {
     executionTime: number;
     status: ProcessStatus
 }
-export type ProcessFinalStats = { turnaround: number, responseTime: number, pid: number }
+export type ProcessFinalStats = {
+    turnaround: number,
+    responseTime: number,
+    finishTime: number,
+    pid: number,
+}
 export type ProcessesFinalStats = Array<ProcessFinalStats>
-export type Interval = { start: number, finish: number, pid: number }
-export type Intervals = Array<Interval>
+export type Intervals = [{ [k: string]: { start: number, finish: number, status: ProcessStatus }[] }]
 export interface SchedulerReturn {
-    processesData: ProcessesFinalStats
+    processesData: ProcessesFinalStats,
     intervals: Intervals
 }
