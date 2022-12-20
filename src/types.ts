@@ -1,5 +1,3 @@
-import { type } from "os";
-import { start } from "repl";
 
 export enum ProcessStatus {
     RUNNING = 'running',
