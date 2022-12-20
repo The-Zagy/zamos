@@ -23,6 +23,7 @@ export type ProcessFinalStats = {
     responseTime: number,
     finishTime: number,
     firstRunTime: number,
+    arrivalTime: number,
     interval: Interval
 }
 export type ProcessesFinalStats = Array<ProcessFinalStats>
