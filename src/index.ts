@@ -1,4 +1,4 @@
-import { Intervals, Process, ProcessStatus, SchedulerReturn } from "./types";
+import { Interval, Process, ProcessStatus, SchedulerReturn } from "./types";
 import { scene } from './scene.json'
 import { calcResponseTime, calcTurnAroundTime } from "./utils";
 
