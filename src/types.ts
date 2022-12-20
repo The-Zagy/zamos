@@ -14,7 +14,7 @@ export interface Process {
     firstRunTime: number;
     cpuTime: number;
     //Meaning start after how many seconds of execution
-    io: { start: number, finish: number }[];
+    io: { start: number, length: number }[];
     status: ProcessStatus
 }
 export type ProcessFinalStats = {
