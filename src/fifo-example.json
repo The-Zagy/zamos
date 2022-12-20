@@ -1,0 +1,31 @@
+{
+    "scene": [
+        {
+            "pid": 1,
+            "arrivalTime": 0,
+            "finishTime": -1,
+            "firstRunTime": -1,
+            "cpuTime": 10,
+            "io":[{"start":6,"length":4}],
+            "status": "ready"
+        },
+        {
+            "pid": 2,
+            "arrivalTime": 0,
+            "finishTime": -1,
+            "firstRunTime": -1,
+            "io":[{"start":9,"length":15}],
+            "cpuTime": 15,
+            "status": "ready"
+        },
+        {
+            "pid": 3,
+            "arrivalTime": 0,
+            "finishTime": -1,
+            "firstRunTime": -1,
+            "io":[{"start":3,"length":5}],
+            "cpuTime": 5,
+            "status": "ready"
+        }
+    ]
+}

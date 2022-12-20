@@ -5,17 +5,19 @@ export enum ProcessStatus {
     BLOCKED = 'blocked'
 
 }
+
+
 export interface Process {
-    name: string,
     pid: number;
     arrivalTime: number;
     finishTime: number;
     firstRunTime: number;
-    executionTime: number;
+    cpuTime: number;
+    //Meaning start after how many seconds of execution
+    io: { start: number, finish: number }[];
     status: ProcessStatus
 }
 export type ProcessFinalStats = {
-    name: string
     pid: number,
     turnaround: number,
     responseTime: number,
@@ -30,7 +32,6 @@ export type SchedulerReturn = ProcessesFinalStats
 //example
 const ret: SchedulerReturn = [
     {
-        name: "A",
         pid: 3,
         finishTime: 5,
         responseTime: 23,
@@ -38,7 +39,6 @@ const ret: SchedulerReturn = [
         interval: [{ start: 1, finish: 4, status: ProcessStatus.READY }, { start: 4, finish: 7, status: ProcessStatus.BLOCKED }]
     },
     {
-        name: "B",
         pid: 1,
         finishTime: 2,
         responseTime: 13,

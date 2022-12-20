@@ -5,7 +5,7 @@
             "arrivalTime": 0,
             "finishTime": -1,
             "firstRunTime": -1,
-            "executionTime": 8,
+            "cpuTime": 8,
             "status": "ready"
         },
         {
@@ -13,7 +13,7 @@
             "arrivalTime": 1,
             "finishTime": -1,
             "firstRunTime": -1,
-            "executionTime": 3,
+            "cpuTime": 3,
             "status": "ready"
         },
         {
@@ -21,7 +21,7 @@
             "arrivalTime": 2,
             "finishTime": -1,
             "firstRunTime": -1,
-            "executionTime": 4,
+            "cpuTime": 4,
             "status": "ready"
         },
         {
@@ -29,7 +29,7 @@
             "arrivalTime": 8,
             "finishTime": -1,
             "firstRunTime": -1,
-            "executionTime": 2,
+            "cpuTime": 2,
             "status": "ready"
         },
         {
@@ -37,7 +37,7 @@
             "arrivalTime": 8,
             "finishTime": -1,
             "firstRunTime": -1,
-            "executionTime": 5,
+            "cpuTime": 5,
             "status": "ready"
         }
     ]
