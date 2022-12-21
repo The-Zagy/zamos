@@ -1,5 +1,6 @@
 import { Interval, Process, ProcessFinalStats, ProcessStatus, SchedulerReturn } from "./types";
-import { scene, quantumLengths } from './mlfq-example.json'
+import {  quantumLengths } from './mlfq-example.json'
+import { scene } from './STCF-example.json'
 import { calcResponseTime, calcTurnAroundTime } from "./utils";
 import { PriorityQueue } from "./helper";
 let processQueue: Process[];
@@ -292,7 +293,130 @@ function MultiLevelFeedbackQueue(processQueue: Process[], quantumLengths: { leve
     return result;
 }
 
+function shortestTimeToCompletion(processQueue: Process[]): SchedulerReturn {
+    let sortedByArrivalTime = processQueue.sort((a, b) => a.arrivalTime - b.arrivalTime);
+    let currentTime: number = 0;
+    const readyQueue: { arrive: number, process: Process }[] = [];
+    let blockedQueue: { process: Process, releaseTime: number }[] = [];
+    let currentlyRunning: null | Process = null;
+    let currentlyRunningTime: number = 0;
+    let currentlyRunningStartTime = 0;
+    const result: SchedulerReturn = sortedByArrivalTime.map((i => {
+        return (
+            {
+                arrivalTime: i.arrivalTime,
+                finishTime: -1,
+                firstRunTime: -1,
+                responseTime: -1,
+                turnaround: -1,
+                pid: i.pid,
+                interval: []
+            }
+        )
+    }));
 
+    while (blockedQueue.length !== 0 || readyQueue.length !== 0 || sortedByArrivalTime.length !== 0 || currentlyRunning !== null) {
+        //find canditates to be ready from the input and the blocked queue and push them into ready queue
+        while (sortedByArrivalTime.length !== 0) {
+            const canditate = sortedByArrivalTime.findIndex((i) => {
+                if (i.arrivalTime <= currentTime) return true;
+                return false;
+            });
+            if (canditate === -1) break;
+            readyQueue.push({ process: sortedByArrivalTime[canditate], arrive: currentTime });
+            sortedByArrivalTime.splice(canditate, 1)
+        }
+        while (blockedQueue.length !== 0) {
+            const canditate = blockedQueue.findIndex((i) => {
+                if (i.releaseTime <= currentTime) return true;
+                return false
+            })
+            if (canditate === -1) break;
+            readyQueue.push({ process: blockedQueue[canditate].process, arrive: currentTime });
+            blockedQueue.splice(canditate, 1);
+        }
+        //if nothing is running dequeue from ready queue that is the queue isn't empty
+        //if it is indeed empty just wait for the next second maybe it won't be
+        if (currentlyRunning === null) {
+            if (readyQueue.length !== 0) {
+                // Find the process with the shortest burst time (i.e., lowest cpuTime value)
+                const shortestJobIndex = readyQueue.reduce((minIndex, queueItem, index) => {
+                    if (queueItem.process.cpuTime < readyQueue[minIndex].process.cpuTime) {
+                        return index;
+                    }
+                    return minIndex;
+                }, 0);
+                const temp = readyQueue.splice(shortestJobIndex, 1)[0];
+                currentlyRunning = temp.process;
+                let index = result.findIndex((i) => i.pid === currentlyRunning!.pid);
+                result[index].interval.push({
+                    start: temp.arrive,
+                    finish: currentTime,
+                    status: ProcessStatus.READY,
+                    level: -1,
+                });
+                currentlyRunningStartTime = currentTime;
+                if (currentlyRunning.firstRunTime === -1) currentlyRunning.firstRunTime = currentTime;
+            } else {
+                currentTime++;
+                continue;
+            }
+        }
+        //Manipulate current running process and increment running time
+        currentlyRunning.cpuTime--;
+        currentlyRunningTime++;
+        currentTime++;
+
+        //Check if there's any i/o block if it is queue currently running into blocked queue
+        //and set currentlyRunning to null
+        if (currentlyRunning.io.find((i) => i.start === currentlyRunningTime)) {
+            const ioPeriod = currentlyRunning.io.shift();
+            blockedQueue.push({
+                process: currentlyRunning,
+                releaseTime: currentTime + ioPeriod!.length
+            })
+            let index = result.findIndex(i => i.pid === currentlyRunning!.pid);
+            result[index].interval.push({ start: currentlyRunningStartTime, finish: currentTime, status: ProcessStatus.RUNNING, level: -1 });
+            result[index].interval.push({ start: currentTime, finish: blockedQueue[blockedQueue.length - 1].releaseTime, status: ProcessStatus.BLOCKED, level: -1 });
+            currentlyRunning = null;
+            currentlyRunningTime = 0;
+        }
+        //other wise check if it's cputime is over and also set it to null
+        else if (currentlyRunning.cpuTime === 0) {
+
+            let index = result.findIndex(i => i.pid === currentlyRunning!.pid);
+            result[index].interval.push({ start: currentlyRunningStartTime, finish: currentTime, status: ProcessStatus.RUNNING, level: -1 });
+            result[index].finishTime = currentTime;
+            result[index].firstRunTime = currentlyRunning.firstRunTime;
+            currentlyRunning = null;
+            currentlyRunningTime = 0;
+        } else {
+            let preempt = false;
+            const preemptCanditate = readyQueue.find((i) => i.process.cpuTime < currentlyRunning!.cpuTime);
+            if (preemptCanditate) preempt = true;
+
+            if (preempt) {
+                readyQueue.push({ process: currentlyRunning, arrive: currentTime });
+                let index = result.findIndex((i) => i.pid === currentlyRunning!.pid);
+                result[index].interval.push({
+                    start: currentlyRunningStartTime,
+                    finish: currentTime,
+                    status: ProcessStatus.RUNNING,
+                    level: -1,
+                });
+                currentlyRunning = null;
+                currentlyRunningTime = 0;
+                continue;
+            }
+        }
+
+    }
+    return result.map((i) => ({
+        ...i,
+        responseTime: calcResponseTime(i.firstRunTime, i.arrivalTime),
+        turnaround: calcTurnAroundTime(i.finishTime, i.arrivalTime),
+    }))
+}
 
 function checkIntegrityOfInput(input: Process[]) {
     for (const process of input) {
@@ -302,8 +426,8 @@ function checkIntegrityOfInput(input: Process[]) {
 function main() {
     processQueue = (scene as unknown) as Process[];
     quantum = (quantumLengths as unknown) as { level2: number, level1: number, level0: number };
-    console.dir(MultiLevelFeedbackQueue(processQueue, quantum)[0].interval);
+    //console.dir(MultiLevelFeedbackQueue(processQueue, quantum)[0].interval);
 
-    console.dir(SJF(processQueue), {depth: 4});
+    console.dir(shortestTimeToCompletion(processQueue), {depth: 4});
 }
 main();
