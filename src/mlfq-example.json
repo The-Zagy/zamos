@@ -6,16 +6,16 @@
             "finishTime": -1,
             "firstRunTime": -1,
             "cpuTime": 10,
-            "io":[{"start":6,"length":10}],
+            "io":[{"start":3,"length":3}],
             "status": "ready"
         },
         {
             "pid": 2,
-            "arrivalTime": 6,
+            "arrivalTime": 5,
             "finishTime": -1,
             "firstRunTime": -1,
-            "cpuTime": 10,
-            "io":[{"start":9,"length":15}],
+            "cpuTime": 7,
+            "io":[{"start":6,"length":1}],
             "status": "ready"
         }
     ],

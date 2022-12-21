@@ -26,5 +26,5 @@ export type ProcessFinalStats = {
 }
 
 export type ProcessesFinalStats = Array<ProcessFinalStats>
-export type Interval = { start: number, finish: number, status: ProcessStatus, level: number }[]
+export type Interval = { start: number, finish: number, status: ProcessStatus, level?: number }[]
 export type SchedulerReturn = ProcessesFinalStats

@@ -2,6 +2,7 @@ import { Interval, Process, ProcessFinalStats, ProcessStatus, SchedulerReturn } 
 import { scene, quantumLengths } from './mlfq-example.json'
 import { calcResponseTime, calcTurnAroundTime } from "./utils";
 import { PriorityQueue } from "./helper";
+import { release } from "os";
 let processQueue: Process[];
 let quantum: { level2: number, level1: number, level0: number };
 
@@ -54,7 +55,7 @@ function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
                 const temp = readyQueue.shift();
                 currentlyRunning = temp!.process as Process;
                 let index = result.findIndex(i => i.pid === currentlyRunning!.pid);
-                result[index].interval.push({ start: temp!.arrive, finish: currentTime, status: ProcessStatus.READY, level: -1 })
+                result[index].interval.push({ start: temp!.arrive, finish: currentTime, status: ProcessStatus.READY })
                 currentlyRunningStartTime = currentTime;
                 if (currentlyRunning.firstRunTime === -1) currentlyRunning.firstRunTime = currentTime;
             }
@@ -78,8 +79,8 @@ function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
                 releaseTime: currentTime + ioPeriod!.length
             })
             let index = result.findIndex(i => i.pid === currentlyRunning!.pid);
-            result[index].interval.push({ start: currentlyRunningStartTime, finish: currentTime, status: ProcessStatus.RUNNING, level: -1 });
-            result[index].interval.push({ start: currentTime, finish: blockedQueue[blockedQueue.length - 1].releaseTime, status: ProcessStatus.BLOCKED, level: -1 });
+            result[index].interval.push({ start: currentlyRunningStartTime, finish: currentTime, status: ProcessStatus.RUNNING });
+            result[index].interval.push({ start: currentTime, finish: blockedQueue[blockedQueue.length - 1].releaseTime, status: ProcessStatus.BLOCKED });
             currentlyRunning = null;
             currentlyRunningTime = 0;
         }
@@ -87,7 +88,7 @@ function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
         else if (currentlyRunning.cpuTime === 0) {
 
             let index = result.findIndex(i => i.pid === currentlyRunning!.pid);
-            result[index].interval.push({ start: currentlyRunningStartTime, finish: currentTime, status: ProcessStatus.RUNNING, level: -1 });
+            result[index].interval.push({ start: currentlyRunningStartTime, finish: currentTime, status: ProcessStatus.RUNNING });
             result[index].finishTime = currentTime;
             result[index].firstRunTime = currentlyRunning.firstRunTime;
             currentlyRunning = null;
@@ -140,7 +141,7 @@ function SJF(processQueue: Process[]): SchedulerReturn {
             const runFor = currentlyRunning.io.length > 0 ? currentlyRunning.io[0].start : currentlyRunning.cpuTime;
             currentlyRunning.cpuTime -= runFor;
             // add running interval
-            result[i].interval.push({start: curTime, finish: curTime += runFor, status: ProcessStatus.RUNNING, level: -1 })
+            result[i].interval.push({start: curTime, finish: curTime += runFor, status: ProcessStatus.RUNNING })
             // if there's was io so process will need to be added to blocked qu
             if (currentlyRunning.io.length > 0) blockedQu.push(currentlyRunning);
             // set finish time and turnaround if process finished
@@ -156,7 +157,7 @@ function SJF(processQueue: Process[]): SchedulerReturn {
             const curBlocked= blockedQu.shift();
             const i = result.findIndex((itm) => itm.pid == curBlocked!.pid);
             //* add blocked interval NOTE => removing one io interval
-            result[i].interval.push({start: curTime, finish: curTime += curBlocked!.io.shift()!.length, status: ProcessStatus.BLOCKED, level: -1 });
+            result[i].interval.push({start: curTime, finish: curTime += curBlocked!.io.shift()!.length, status: ProcessStatus.BLOCKED });
             // if process didn't finish cpu time add it to be ready again
             if (curBlocked !== undefined && curBlocked.cpuTime > 0) {
                 readyQu.enqueue(curBlocked);
@@ -181,12 +182,15 @@ function SJF(processQueue: Process[]): SchedulerReturn {
 // 3-level MLFQ, the topmost level (2) is the highest priority 
 // using Round Robin RR in all levels 
 function MultiLevelFeedbackQueue(processQueue: Process[], quantumLengths: { level2: number, level1: number, level0: number }): SchedulerReturn {
-    const readyQueueLevel2: { arrivalTime: number, process: Process }[] = [];
-    const readyQueueLevel1: { arrivalTime: number, process: Process }[] = [];
-    const readyQueueLevel0: { arrivalTime: number, process: Process }[] = [];
-    
+    let readyQueueLevel2: { arrivalTime: number, process: Process, executed: number }[] = [];
+    let readyQueueLevel1: { arrivalTime: number, process: Process, executed: number }[] = [];
+    let readyQueueLevel0: { arrivalTime: number, process: Process, executed: number }[] = [];
+    let blockedQueue: { releaseTime: number, process: Process, executed: number, level: number }[] = [];
+
     let runningProcess: null | Process = null;
     let currentTime: number = 0;
+    let exe: number = 0;
+    let pIndex: number = -1;
     let currentQuantumLength: number = 0;
     
     processQueue = processQueue.sort((p1, p2) => p1.arrivalTime - p2.arrivalTime);
@@ -207,69 +211,181 @@ function MultiLevelFeedbackQueue(processQueue: Process[], quantumLengths: { leve
     /* when a process enters the system, it is placed at the highest priority level,
     so initially, put all processes in level 2 */
     for(let process of processQueue) {
-        readyQueueLevel2.push({ arrivalTime: process.arrivalTime, process });
+        readyQueueLevel2.push({ arrivalTime: process.arrivalTime, process, executed: 0 });
     }
     
-    while(readyQueueLevel2.length || readyQueueLevel1.length || readyQueueLevel0.length ) {
+    while(readyQueueLevel2.length || readyQueueLevel1.length || readyQueueLevel0.length || blockedQueue.length ) {
+
+        while(blockedQueue.length) {
+            let i = blockedQueue.findIndex(p => p.releaseTime <= currentTime);
+            if(i === -1) break;
+            blockedQueue[i].process.status = ProcessStatus.READY;
+            let temp = { arrivalTime: blockedQueue[i].releaseTime, process: blockedQueue[i].process, executed: blockedQueue[i].executed }
+            if(blockedQueue[i].process.cpuTime !== 0) {
+                blockedQueue[i].level === 2
+                ? readyQueueLevel2.push(temp)
+                : blockedQueue[i].level === 1
+                ? readyQueueLevel1.push(temp)
+                : readyQueueLevel0.push(temp);
+            }
+            blockedQueue.splice(i, 1);
+        }
+
+        readyQueueLevel2 = readyQueueLevel2.sort((p1, p2) => p1.arrivalTime - p2.arrivalTime);
+        readyQueueLevel1 = readyQueueLevel1.sort((p1, p2) => p1.arrivalTime - p2.arrivalTime);
+        readyQueueLevel0 = readyQueueLevel0.sort((p1, p2) => p1.arrivalTime - p2.arrivalTime);
+
         if(readyQueueLevel2.length && readyQueueLevel2[0].arrivalTime <= currentTime) {
             runningProcess = readyQueueLevel2[0].process;
+            exe = readyQueueLevel2[0].executed;
             currentQuantumLength = quantumLengths.level2;
-            readyQueueLevel2.shift();
-            let pIndex = result.findIndex(p => (p.pid === runningProcess?.pid));
+            pIndex = result.findIndex(p => (p.pid === runningProcess?.pid));
+            
+            if(readyQueueLevel2[0].arrivalTime < currentTime) {
+                result[pIndex].interval.push({ start: readyQueueLevel2[0].arrivalTime, finish: currentTime, status: ProcessStatus.READY, level: 2 });
+            }
             if(result[pIndex].firstRunTime === -1) result[pIndex].firstRunTime = currentTime;
+            readyQueueLevel2.shift();
+            
             if(runningProcess.cpuTime <= currentQuantumLength) {
-                result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.cpuTime, status: ProcessStatus.RUNNING, level: 2 });
-                currentTime += runningProcess.cpuTime;
-                runningProcess.cpuTime = 0;
-                result[pIndex].finishTime = currentTime;
-                result[pIndex].turnaround = calcTurnAroundTime(result[pIndex].finishTime, result[pIndex].arrivalTime);
-                result[pIndex].responseTime = calcResponseTime(result[pIndex].firstRunTime, result[pIndex].arrivalTime);
+                if(runningProcess.io.length && exe + runningProcess.cpuTime >= runningProcess.io[0].start) {
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.io[0].start - exe, status: ProcessStatus.RUNNING, level: 2 });
+                    currentTime += (runningProcess.io[0].start - exe);
+                    runningProcess.cpuTime -= (runningProcess.io[0].start - exe);
+                    exe += (runningProcess.io[0].start - exe);
+                    blockedQueue.push({ releaseTime: currentTime + runningProcess.io[0].length, process: runningProcess, executed: exe, level: 2 })
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.io[0].length, status: ProcessStatus.BLOCKED, level: 2 });
+                    runningProcess.io.shift();
+                }
+                else {
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.cpuTime, status: ProcessStatus.RUNNING, level: 2 });
+                    currentTime += runningProcess.cpuTime;
+                    exe += runningProcess.cpuTime;
+                    runningProcess.cpuTime = 0;
+                    result[pIndex].finishTime = currentTime;
+                    result[pIndex].turnaround = calcTurnAroundTime(result[pIndex].finishTime, result[pIndex].arrivalTime);
+                    result[pIndex].responseTime = calcResponseTime(result[pIndex].firstRunTime, result[pIndex].arrivalTime);
+                }
             }
             else {
-                result[pIndex].interval.push({ start: currentTime, finish: currentTime + currentQuantumLength, status: ProcessStatus.RUNNING, level: 2 });
-                currentTime += currentQuantumLength;
-                runningProcess.cpuTime -= currentQuantumLength;
-                readyQueueLevel1.push({ arrivalTime: currentTime, process: runningProcess });
+                if(runningProcess.io.length && exe + currentQuantumLength >= runningProcess.io[0].start) {
+                    let temp = exe + currentQuantumLength;
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.io[0].start - exe, status: ProcessStatus.RUNNING, level: 2 });
+                    currentTime += (runningProcess.io[0].start - exe);
+                    runningProcess.cpuTime -= (runningProcess.io[0].start - exe);
+                    exe += (runningProcess.io[0].start - exe);
+                    blockedQueue.push({ releaseTime: currentTime + runningProcess.io[0].length, process: runningProcess, executed: exe, level: (temp === runningProcess.io[0].start? 1: 2) })
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.io[0].length, status: ProcessStatus.BLOCKED, level: (temp === runningProcess.io[0].start? 1: 2) });
+                    runningProcess.io.shift();
+                }
+                else {
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + currentQuantumLength, status: ProcessStatus.RUNNING, level: 2 });
+                    currentTime += currentQuantumLength;
+                    exe += currentQuantumLength;
+                    runningProcess.cpuTime -= currentQuantumLength;
+                    readyQueueLevel1.push({ arrivalTime: currentTime, process: runningProcess, executed: exe });
+                }
             }
         }
         else if(readyQueueLevel1.length && readyQueueLevel1[0].arrivalTime <= currentTime) {
             runningProcess = readyQueueLevel1[0].process;
+            exe = readyQueueLevel1[0].executed;
             currentQuantumLength = quantumLengths.level1;
+            pIndex = result.findIndex(p => (p.pid === runningProcess?.pid));
+            
+            if(readyQueueLevel1[0].arrivalTime < currentTime) {
+                result[pIndex].interval.push({ start: readyQueueLevel1[0].arrivalTime, finish: currentTime, status: ProcessStatus.READY, level: 1 });
+            }
             readyQueueLevel1.shift();
-            let pIndex = result.findIndex(p => (p.pid === runningProcess?.pid));
+            
             if(runningProcess.cpuTime <= currentQuantumLength) {
-                result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.cpuTime, status: ProcessStatus.RUNNING, level: 1 });
-                currentTime += runningProcess.cpuTime;
-                runningProcess.cpuTime = 0;
-                result[pIndex].finishTime = currentTime;
-                result[pIndex].turnaround = calcTurnAroundTime(result[pIndex].finishTime, result[pIndex].arrivalTime);
-                result[pIndex].responseTime = calcResponseTime(result[pIndex].firstRunTime, result[pIndex].arrivalTime);
+                if(runningProcess.io.length && exe + runningProcess.cpuTime >= runningProcess.io[0].start) {
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + (runningProcess.io[0].start - exe), status: ProcessStatus.RUNNING, level: 1 });
+                    currentTime += (runningProcess.io[0].start - exe);
+                    runningProcess.cpuTime -= (runningProcess.io[0].start - exe);
+                    exe += (runningProcess.io[0].start - exe);
+                    blockedQueue.push({ releaseTime: currentTime + runningProcess.io[0].length, process: runningProcess, executed: exe, level: 1 })
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.io[0].length, status: ProcessStatus.BLOCKED, level: 1 });
+                    runningProcess.io.shift();
+                }
+                else {
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.cpuTime, status: ProcessStatus.RUNNING, level: 1 });
+                    currentTime += runningProcess.cpuTime;
+                    exe += runningProcess.cpuTime;
+                    runningProcess.cpuTime = 0;
+                    result[pIndex].finishTime = currentTime;
+                    result[pIndex].turnaround = calcTurnAroundTime(result[pIndex].finishTime, result[pIndex].arrivalTime);
+                    result[pIndex].responseTime = calcResponseTime(result[pIndex].firstRunTime, result[pIndex].arrivalTime);
+                }
             }
             else {
-                result[pIndex].interval.push({ start: currentTime, finish: currentTime + currentQuantumLength, status: ProcessStatus.RUNNING, level: 1 });
-                currentTime += currentQuantumLength;
-                runningProcess.cpuTime -= currentQuantumLength;
-                readyQueueLevel0.push({ arrivalTime: currentTime, process: runningProcess });
+                if(runningProcess.io.length && exe + currentQuantumLength >= runningProcess.io[0].start) {
+                    let temp = exe + currentQuantumLength;
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.io[0].start - exe, status: ProcessStatus.RUNNING, level: 1 });
+                    currentTime += (runningProcess.io[0].start - exe);
+                    runningProcess.cpuTime -= (runningProcess.io[0].start - exe);
+                    exe += (runningProcess.io[0].start - exe);
+                    blockedQueue.push({ releaseTime: currentTime + runningProcess.io[0].length, process: runningProcess, executed: exe, level: (temp === runningProcess.io[0].start? 0: 1) })
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.io[0].length, status: ProcessStatus.BLOCKED, level: (temp === runningProcess.io[0].start? 0: 1) });
+                    runningProcess.io.shift();
+                }
+                else {
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + currentQuantumLength, status: ProcessStatus.RUNNING, level: 1 });
+                    currentTime += currentQuantumLength;
+                    exe += currentQuantumLength;
+                    runningProcess.cpuTime -= currentQuantumLength;
+                    readyQueueLevel0.push({ arrivalTime: currentTime, process: runningProcess, executed: exe });
+                }
             }
         }
         else if(readyQueueLevel0.length && readyQueueLevel0[0].arrivalTime <= currentTime) {
             runningProcess = readyQueueLevel0[0].process;
+            exe = readyQueueLevel0[0].executed;
             currentQuantumLength = quantumLengths.level0;
+            pIndex = result.findIndex(p => p.pid === runningProcess?.pid);
+            
+            if(readyQueueLevel0[0].arrivalTime < currentTime) {
+                result[pIndex].interval.push({ start: readyQueueLevel0[0].arrivalTime, finish: currentTime, status: ProcessStatus.READY, level: 0 });
+            }
             readyQueueLevel0.shift();
-            let pIndex = result.findIndex(p => p.pid === runningProcess?.pid);
+            
             if(runningProcess.cpuTime <= currentQuantumLength) {
-                result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.cpuTime, status: ProcessStatus.RUNNING, level: 0 });
-                currentTime += runningProcess.cpuTime;
-                runningProcess.cpuTime = 0;
-                result[pIndex].finishTime = currentTime;
-                result[pIndex].turnaround = calcTurnAroundTime(result[pIndex].finishTime, result[pIndex].arrivalTime);
-                result[pIndex].responseTime = calcResponseTime(result[pIndex].firstRunTime, result[pIndex].arrivalTime);
+                if(runningProcess.io.length && exe + runningProcess.cpuTime >= runningProcess.io[0].start) {
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.io[0].start - exe, status: ProcessStatus.RUNNING, level: 0 });
+                    currentTime += (runningProcess.io[0].start - exe);
+                    runningProcess.cpuTime -= (runningProcess.io[0].start - exe);
+                    exe += (runningProcess.io[0].start - exe);
+                    blockedQueue.push({ releaseTime: currentTime + runningProcess.io[0].length, process: runningProcess, executed: exe, level: 0 })
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.io[0].length, status: ProcessStatus.BLOCKED, level: 0 });
+                    runningProcess.io.shift();
+                }
+                else {
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.cpuTime, status: ProcessStatus.RUNNING, level: 0 });
+                    currentTime += runningProcess.cpuTime;
+                    exe += runningProcess.cpuTime;
+                    runningProcess.cpuTime = 0;
+                    result[pIndex].finishTime = currentTime;
+                    result[pIndex].turnaround = calcTurnAroundTime(result[pIndex].finishTime, result[pIndex].arrivalTime);
+                    result[pIndex].responseTime = calcResponseTime(result[pIndex].firstRunTime, result[pIndex].arrivalTime);
+                }
             }
             else {
-                result[pIndex].interval.push({ start: currentTime, finish: currentTime + currentQuantumLength, status: ProcessStatus.RUNNING, level: 0 });
-                currentTime += currentQuantumLength;
-                runningProcess.cpuTime -= currentQuantumLength;
-                readyQueueLevel0.push({ arrivalTime: currentTime, process: runningProcess });
+                if(runningProcess.io.length && exe + currentQuantumLength >= runningProcess.io[0].start) {
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.io[0].start - exe, status: ProcessStatus.RUNNING, level: 0 });
+                    currentTime += (runningProcess.io[0].start - exe);
+                    runningProcess.cpuTime -= (runningProcess.io[0].start - exe);
+                    exe += (runningProcess.io[0].start - exe);
+                    blockedQueue.push({ releaseTime: currentTime + runningProcess.io[0].length, process: runningProcess, executed: exe, level: 0 })
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.io[0].length, status: ProcessStatus.BLOCKED, level: 0 });
+                    runningProcess.io.shift();
+                }
+                else {
+                    result[pIndex].interval.push({ start: currentTime, finish: currentTime + currentQuantumLength, status: ProcessStatus.RUNNING, level: 0 });
+                    currentTime += currentQuantumLength;
+                    exe += currentQuantumLength;
+                    runningProcess.cpuTime -= currentQuantumLength;
+                    readyQueueLevel0.push({ arrivalTime: currentTime, process: runningProcess, executed: exe });
+                }
             }
         }
         else {
@@ -280,82 +396,23 @@ function MultiLevelFeedbackQueue(processQueue: Process[], quantumLengths: { leve
     }
     return result;
 }
+// // Round Robin RR 
+// function RoundRobin(): SchedulerReturn {
 
-// function SJF(processQueue: Process[]): SchedulerReturn {
-//     let currentTimeSlice = 0;
-//     const intervals: Intervals = [];
-//     processQueue = processQueue.sort((a, b) => (a.arrivalTime - b.arrivalTime));
-//     processQueue = processQueue.sort((a, b) => {
-//         if (a !== b) return 0;
-//         return a.cpuTime - b.cpuTime;
-//     })
-//     for (const process of processQueue) {
-//         if (process.arrivalTime > currentTimeSlice) currentTimeSlice = process.arrivalTime;
-//         process.finishTime = currentTimeSlice + process.cpuTime;
-//         process.firstRunTime = currentTimeSlice;
-//         intervals.push({ start: process.firstRunTime, finish: process.finishTime, pid: process.pid });
-//         currentTimeSlice += process.cpuTime;
-//     }
-//     return (
-//         {
-//             intervals: intervals,
-//             processesData: processQueue
-//                 .map((process => ({ pid: process.pid, responseTime: calcResponseTime(process), turnaround: calcTurnAroundTime(process) })))
-//         }
-//     )
 // }
-// function shortestTimeToCompletion(processQueue: Process[]): SchedulerReturn {
-//     let currentTimeSlice = 0;
-//     const intervals: Intervals = [];
-//     processQueue = processQueue.sort((a, b) => (a.cpuTime - b.cpuTime));
-//     while (true) {
-//         const currentProcessIndex = processQueue.findIndex(process => process.arrivalTime <= currentTimeSlice && process.cpuTime !== 0);
-//         if (currentProcessIndex === -1) break;
-//         const interval: Interval = { start: currentTimeSlice, pid: processQueue[currentProcessIndex].pid, finish: 0 }
-//         if (processQueue[currentProcessIndex].firstRunTime === -1) processQueue[currentProcessIndex].firstRunTime = currentTimeSlice;
-//         processQueue[currentProcessIndex].cpuTime--;
-//         currentTimeSlice++;
-//         if (processQueue[currentProcessIndex].cpuTime === 0) processQueue[currentProcessIndex].finishTime = currentTimeSlice;
-//         interval.finish = currentTimeSlice;
-//         intervals.push(interval)
-//     }
-//     //Refine intervals;
-//     let currentPid;
-//     let leftPointer = 0;
-//     let rightPointer = 0;
-//     const temp: Intervals = [];
-//     for (let i = 0; i < intervals.length; i++) {
-//         if (!currentPid) {
-//             currentPid = intervals[i].pid;
-//             continue;
-//         }
-//         if (currentPid === intervals[i].pid) {
-//             rightPointer = i;
-//         }
-//         if (currentPid !== intervals[i].pid) {
-//             temp.push({ start: intervals[leftPointer].start, finish: intervals[rightPointer].finish, pid: currentPid });
-//             currentPid = intervals[i].pid;
-//             leftPointer = i;
-//         }
-//     }
-//     return ({
-//         intervals: temp,
-//         processesData: processQueue
-//             .map((process => ({ pid: process.pid, responseTime: calcResponseTime(process), turnaround: calcTurnAroundTime(process) })))
-//     });
-// }
-//Round Robin, MLFQ
 
 function checkIntegrityOfInput(input: Process[]) {
     for (const process of input) {
         //check that i/o is within execution time
+        //sort i/o list (start)
     }
 }
 function main() {
     processQueue = (scene as unknown) as Process[];
     quantum = (quantumLengths as unknown) as { level2: number, level1: number, level0: number };
-    console.dir(MultiLevelFeedbackQueue(processQueue, quantum)[0].interval);
+    console.dir(MultiLevelFeedbackQueue(processQueue, quantum), {depth: 4});
 
-    console.dir(SJF(processQueue), {depth: 4});
+    // console.dir(SJF(processQueue), {depth: 4});
+    // console.dir(firstInFirstOut(processQueue), {depth: 4});
 }
 main();
