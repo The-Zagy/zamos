@@ -31,7 +31,7 @@ function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
         //find canditates to be ready from the input and the blocked queue and push them into ready queue
         while (sortedByArrivalTime.length !== 0) {
             const canditate = sortedByArrivalTime.findIndex((i) => {
-                if (i.arrivalTime >= currentTime) return true;
+                if (i.arrivalTime <= currentTime) return true;
                 return false;
             });
             if (canditate === -1) break;
