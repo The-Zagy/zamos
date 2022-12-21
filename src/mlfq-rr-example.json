@@ -6,16 +6,16 @@
             "finishTime": -1,
             "firstRunTime": -1,
             "cpuTime": 10,
-            "io":[{"start":3,"length":3}],
+            "io":[{"start": 6, "length": 2}],
             "status": "ready"
         },
         {
             "pid": 2,
-            "arrivalTime": 5,
+            "arrivalTime": 4,
             "finishTime": -1,
             "firstRunTime": -1,
-            "cpuTime": 7,
-            "io":[{"start":6,"length":1}],
+            "cpuTime": 15,
+            "io":[{"start": 1, "length": 3}, {"start": 10, "length": 2}],
             "status": "ready"
         }
     ],
@@ -23,5 +23,6 @@
         "level2": 1,
         "level1": 2,
         "level0": 3
-    }
+    },
+    "RRQuantumLength": 2
 }
