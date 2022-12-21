@@ -14,7 +14,7 @@ class Node {
         this.next = null
     }
 }
-export class PriorityQueue implements Queue{
+export class PriorityQueue implements Queue {
 
     private length: number = 0;
     private head: (Node | null) = null;
@@ -26,12 +26,12 @@ export class PriorityQueue implements Queue{
         let node = new Node(itm)
         let cur = this.head;
         let pre = null;
-        while(cur != null && itm.cpuTime > cur.data.cpuTime) {            
-                pre = cur;
-                cur = cur.next;
+        while (cur != null && itm.cpuTime > cur.data.cpuTime) {
+            pre = cur;
+            cur = cur.next;
         }
         //special case queueu is empty or queue has only one item 
-        if(pre == null) {
+        if (pre == null) {
             //cur already has the head so no worried about head
             this.head = node;
         } else {
@@ -50,7 +50,7 @@ export class PriorityQueue implements Queue{
         return temp.data;
     }
     isEmpty(): boolean {
-        return !this.head 
+        return !this.head
     }
     size(): number {
         return this.length

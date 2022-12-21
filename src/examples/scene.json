@@ -1,0 +1,44 @@
+{
+    "scene": [
+        {
+            "pid": 1,
+            "arrivalTime": 0,
+            "finishTime": -1,
+            "firstRunTime": -1,
+            "cpuTime": 8,
+            "status": "ready"
+        },
+        {
+            "pid": 2,
+            "arrivalTime": 1,
+            "finishTime": -1,
+            "firstRunTime": -1,
+            "cpuTime": 3,
+            "status": "ready"
+        },
+        {
+            "pid": 3,
+            "arrivalTime": 2,
+            "finishTime": -1,
+            "firstRunTime": -1,
+            "cpuTime": 4,
+            "status": "ready"
+        },
+        {
+            "pid": 4,
+            "arrivalTime": 8,
+            "finishTime": -1,
+            "firstRunTime": -1,
+            "cpuTime": 2,
+            "status": "ready"
+        },
+        {
+            "pid": 5,
+            "arrivalTime": 8,
+            "finishTime": -1,
+            "firstRunTime": -1,
+            "cpuTime": 5,
+            "status": "ready"
+        }
+    ]
+}

@@ -1,7 +1,6 @@
-import { Interval, Process, ProcessFinalStats, ProcessStatus, SchedulerReturn } from "./types";
-import { scene, quantumLengths } from './mlfq-example.json'
+import { Process, ProcessStatus, SchedulerReturn } from "./types";
 import { calcResponseTime, calcTurnAroundTime } from "./utils";
-import { PriorityQueue } from "./helper";
+import { PriorityQueue } from "./helpers";
 let processQueue: Process[];
 let quantum: { level2: number, level1: number, level0: number };
 
@@ -125,7 +124,7 @@ function SJF(processQueue: Process[]): SchedulerReturn {
             }
         )
     }));
-    while (sortedByArrivalTime.length > 0 || !readyQu.isEmpty() ) {
+    while (sortedByArrivalTime.length > 0 || !readyQu.isEmpty()) {
         // serve ready qu
         if (!readyQu.isEmpty()) {
             //first process in the ready qu is the smallest
@@ -140,7 +139,7 @@ function SJF(processQueue: Process[]): SchedulerReturn {
             const runFor = currentlyRunning.io.length > 0 ? currentlyRunning.io[0].start : currentlyRunning.cpuTime;
             currentlyRunning.cpuTime -= runFor;
             // add running interval
-            result[i].interval.push({start: curTime, finish: curTime += runFor, status: ProcessStatus.RUNNING, level: -1 })
+            result[i].interval.push({ start: curTime, finish: curTime += runFor, status: ProcessStatus.RUNNING, level: -1 })
             // if there's was io so process will need to be added to blocked qu
             if (currentlyRunning.io.length > 0) blockedQu.push(currentlyRunning);
             // set finish time and turnaround if process finished
@@ -153,10 +152,10 @@ function SJF(processQueue: Process[]): SchedulerReturn {
         }
         // serve io in the backgroung
         if (blockedQu.length > 0) {
-            const curBlocked= blockedQu.shift();
+            const curBlocked = blockedQu.shift();
             const i = result.findIndex((itm) => itm.pid == curBlocked!.pid);
             //* add blocked interval NOTE => removing one io interval
-            result[i].interval.push({start: curTime, finish: curTime += curBlocked!.io.shift()!.length, status: ProcessStatus.BLOCKED, level: -1 });
+            result[i].interval.push({ start: curTime, finish: curTime += curBlocked!.io.shift()!.length, status: ProcessStatus.BLOCKED, level: -1 });
             // if process didn't finish cpu time add it to be ready again
             if (curBlocked !== undefined && curBlocked.cpuTime > 0) {
                 readyQu.enqueue(curBlocked);
@@ -168,7 +167,7 @@ function SJF(processQueue: Process[]): SchedulerReturn {
         //     auxTime = -1;
         // }
         //fill ready queue when process arrival time arrive
-        while (sortedByArrivalTime.length > 0 && curTime >= sortedByArrivalTime[0].arrivalTime ) {
+        while (sortedByArrivalTime.length > 0 && curTime >= sortedByArrivalTime[0].arrivalTime) {
             readyQu.enqueue(sortedByArrivalTime.shift() as Process);
         }
         // speed the time if scene didn't finish yet but ready qu is empty
@@ -184,11 +183,11 @@ function MultiLevelFeedbackQueue(processQueue: Process[], quantumLengths: { leve
     const readyQueueLevel2: { arrivalTime: number, process: Process }[] = [];
     const readyQueueLevel1: { arrivalTime: number, process: Process }[] = [];
     const readyQueueLevel0: { arrivalTime: number, process: Process }[] = [];
-    
+
     let runningProcess: null | Process = null;
     let currentTime: number = 0;
     let currentQuantumLength: number = 0;
-    
+
     processQueue = processQueue.sort((p1, p2) => p1.arrivalTime - p2.arrivalTime);
     const result: SchedulerReturn = processQueue.map(p => {
         return (
@@ -206,18 +205,18 @@ function MultiLevelFeedbackQueue(processQueue: Process[], quantumLengths: { leve
 
     /* when a process enters the system, it is placed at the highest priority level,
     so initially, put all processes in level 2 */
-    for(let process of processQueue) {
+    for (let process of processQueue) {
         readyQueueLevel2.push({ arrivalTime: process.arrivalTime, process });
     }
-    
-    while(readyQueueLevel2.length || readyQueueLevel1.length || readyQueueLevel0.length ) {
-        if(readyQueueLevel2.length && readyQueueLevel2[0].arrivalTime <= currentTime) {
+
+    while (readyQueueLevel2.length || readyQueueLevel1.length || readyQueueLevel0.length) {
+        if (readyQueueLevel2.length && readyQueueLevel2[0].arrivalTime <= currentTime) {
             runningProcess = readyQueueLevel2[0].process;
             currentQuantumLength = quantumLengths.level2;
             readyQueueLevel2.shift();
             let pIndex = result.findIndex(p => (p.pid === runningProcess?.pid));
-            if(result[pIndex].firstRunTime === -1) result[pIndex].firstRunTime = currentTime;
-            if(runningProcess.cpuTime <= currentQuantumLength) {
+            if (result[pIndex].firstRunTime === -1) result[pIndex].firstRunTime = currentTime;
+            if (runningProcess.cpuTime <= currentQuantumLength) {
                 result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.cpuTime, status: ProcessStatus.RUNNING, level: 2 });
                 currentTime += runningProcess.cpuTime;
                 runningProcess.cpuTime = 0;
@@ -232,12 +231,12 @@ function MultiLevelFeedbackQueue(processQueue: Process[], quantumLengths: { leve
                 readyQueueLevel1.push({ arrivalTime: currentTime, process: runningProcess });
             }
         }
-        else if(readyQueueLevel1.length && readyQueueLevel1[0].arrivalTime <= currentTime) {
+        else if (readyQueueLevel1.length && readyQueueLevel1[0].arrivalTime <= currentTime) {
             runningProcess = readyQueueLevel1[0].process;
             currentQuantumLength = quantumLengths.level1;
             readyQueueLevel1.shift();
             let pIndex = result.findIndex(p => (p.pid === runningProcess?.pid));
-            if(runningProcess.cpuTime <= currentQuantumLength) {
+            if (runningProcess.cpuTime <= currentQuantumLength) {
                 result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.cpuTime, status: ProcessStatus.RUNNING, level: 1 });
                 currentTime += runningProcess.cpuTime;
                 runningProcess.cpuTime = 0;
@@ -252,12 +251,12 @@ function MultiLevelFeedbackQueue(processQueue: Process[], quantumLengths: { leve
                 readyQueueLevel0.push({ arrivalTime: currentTime, process: runningProcess });
             }
         }
-        else if(readyQueueLevel0.length && readyQueueLevel0[0].arrivalTime <= currentTime) {
+        else if (readyQueueLevel0.length && readyQueueLevel0[0].arrivalTime <= currentTime) {
             runningProcess = readyQueueLevel0[0].process;
             currentQuantumLength = quantumLengths.level0;
             readyQueueLevel0.shift();
             let pIndex = result.findIndex(p => p.pid === runningProcess?.pid);
-            if(runningProcess.cpuTime <= currentQuantumLength) {
+            if (runningProcess.cpuTime <= currentQuantumLength) {
                 result[pIndex].interval.push({ start: currentTime, finish: currentTime + runningProcess.cpuTime, status: ProcessStatus.RUNNING, level: 0 });
                 currentTime += runningProcess.cpuTime;
                 runningProcess.cpuTime = 0;
@@ -345,17 +344,3 @@ function MultiLevelFeedbackQueue(processQueue: Process[], quantumLengths: { leve
 //     });
 // }
 //Round Robin, MLFQ
-
-function checkIntegrityOfInput(input: Process[]) {
-    for (const process of input) {
-        //check that i/o is within execution time
-    }
-}
-function main() {
-    processQueue = (scene as unknown) as Process[];
-    quantum = (quantumLengths as unknown) as { level2: number, level1: number, level0: number };
-    console.dir(MultiLevelFeedbackQueue(processQueue, quantum)[0].interval);
-
-    console.dir(SJF(processQueue), {depth: 4});
-}
-main();

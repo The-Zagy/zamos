@@ -1,34 +1,31 @@
 {
-    "compilerOptions": {
-        "target": "es2021",
-        "module": "CommonJS",
-        "lib": [
-            "dom",
-            "es2021"
-        ],
-        "sourceMap": false,
-        "outDir": "dist",
-        "rootDir": "src",
-        "strict": true,
-        "types": [
-            "node"
-        ],
-        "esModuleInterop": true,
-        "moduleResolution": "node",
-        "resolveJsonModule": true,
-        "baseUrl": ".",
-        "allowSyntheticDefaultImports": true,
-        "noUnusedLocals": false,
-        "noUnusedParameters": true,
-        "noImplicitReturns": true,
-        "noFallthroughCasesInSwitch": true,
-        "removeComments": true,
-        "allowJs": true
-    },
-    "include": [
-        "src"
+  "compilerOptions": {
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
     ],
-    "exclude": [
-        "node_modules"
-    ]
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": false,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    }
+  ]
 }
