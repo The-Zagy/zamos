@@ -36,6 +36,12 @@ interface Process {
     status: ProcessStatus
 }
 
+### First In, First Out (FIFO)
+
+<img src="https://raw.githubusercontent.com/foursevenlove/gitResource/master/Typora20220328161849.png" style="zoom:80%;" />
+<img src="https://raw.githubusercontent.com/foursevenlove/gitResource/master/Typora20220328162231.png" style="zoom:80%;" />
+
+
 ```
 - `npm install`
 
