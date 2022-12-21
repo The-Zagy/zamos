@@ -1,0 +1,27 @@
+{
+    "scene": [
+        {
+            "pid": 1,
+            "arrivalTime": 0,
+            "finishTime": -1,
+            "firstRunTime": -1,
+            "cpuTime": 10,
+            "io":[{"start":6,"length":10}],
+            "status": "ready"
+        },
+        {
+            "pid": 2,
+            "arrivalTime": 6,
+            "finishTime": -1,
+            "firstRunTime": -1,
+            "cpuTime": 10,
+            "io":[{"start":9,"length":15}],
+            "status": "ready"
+        }
+    ],
+    "quantumLengths": {
+        "level2": 1,
+        "level1": 2,
+        "level0": 3
+    }
+}
