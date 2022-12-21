@@ -101,15 +101,13 @@ function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
         turnaround: calcTurnAroundTime(i.finishTime, i.arrivalTime),
     }))
 }
-//assume timeslice is 1
+
 function SJF(processQueue: Process[]): SchedulerReturn {
     let curTime = 0;
-    // let auxTime = 0; // var to help cur time in processing which time slice the program in, mainlly will be used in sereve blockq
-    //sort process list by arrivalTime to avoid any input errors
-    const sortedByArrivalTime = processQueue.sort((a, b) => a.arrivalTime - b.arrivalTime);
+    //sort process list by arrivalTime to avoid any input errors [list for futur processes]
+    let sortedByArrivalTime = processQueue.sort((a, b) => a.arrivalTime - b.arrivalTime);
     // queue is ordered by cpu time
-    //TODO change queue code to take function as argument to decide how to sort the queue
-    const readyQu = new PriorityQueue();
+    const readyQu = new PriorityQueue<Process>((cur, toBeAdded) => {return cur.cpuTime < toBeAdded.cpuTime});
     // [process, auxTime]
     const blockedQu: Process[] = [];
     const result: SchedulerReturn = sortedByArrivalTime.map((i => {
@@ -126,6 +124,8 @@ function SJF(processQueue: Process[]): SchedulerReturn {
         )
     }));
     while (sortedByArrivalTime.length > 0 || !readyQu.isEmpty() ) {
+
+
         // serve ready qu
         if (!readyQu.isEmpty()) {
             //first process in the ready qu is the smallest
@@ -139,6 +139,8 @@ function SJF(processQueue: Process[]): SchedulerReturn {
             //process will run till reach IO, or if no IO run all cpu time
             const runFor = currentlyRunning.io.length > 0 ? currentlyRunning.io[0].start : currentlyRunning.cpuTime;
             currentlyRunning.cpuTime -= runFor;
+            // edit last interval in this process to add finish time to ready interval
+            result[i].interval.at(-1)!.finish = curTime; 
             // add running interval
             result[i].interval.push({start: curTime, finish: curTime += runFor, status: ProcessStatus.RUNNING, level: -1 })
             // if there's was io so process will need to be added to blocked qu
@@ -148,29 +150,38 @@ function SJF(processQueue: Process[]): SchedulerReturn {
                 result[i].finishTime = curTime;
                 result[i].turnaround = result[i].finishTime - result[i].arrivalTime;
             }
-            // will be used for background work
-            // if (auxTime == -1) auxTime = curTime;
         }
+
+
         // serve io in the backgroung
         if (blockedQu.length > 0) {
             const curBlocked= blockedQu.shift();
             const i = result.findIndex((itm) => itm.pid == curBlocked!.pid);
+            const io = curBlocked!.io.shift()!.length
             //* add blocked interval NOTE => removing one io interval
-            result[i].interval.push({start: curTime, finish: curTime += curBlocked!.io.shift()!.length, status: ProcessStatus.BLOCKED, level: -1 });
+            result[i].interval.push({start: curTime, finish: curTime + io, status: ProcessStatus.BLOCKED, level: -1 });
             // if process didn't finish cpu time add it to be ready again
             if (curBlocked !== undefined && curBlocked.cpuTime > 0) {
-                readyQu.enqueue(curBlocked);
+                curBlocked.arrivalTime = curTime + io;
+                // add process back into the future list to make sure it will be added again in ready queue at the right time
+                sortedByArrivalTime.push(curBlocked);
+                // note also resort future list to avoid errors if predefined processes arrival time is in the far future
+                //todo maybe change how to sort this list over and over[insertion sort or change it to priority queue]
+                sortedByArrivalTime = sortedByArrivalTime.sort((a, b) => a.arrivalTime - b.arrivalTime);
             }
         }
-        //reset aux time after block q processing
-        // if (auxTime != -1) {
-        //     curTime += auxTime;
-        //     auxTime = -1;
-        // }
-        //fill ready queue when process arrival time arrive
+
+
+        //fill ready queue when process arrival time arrive, and add ready interval start for this process
         while (sortedByArrivalTime.length > 0 && curTime >= sortedByArrivalTime[0].arrivalTime ) {
-            readyQu.enqueue(sortedByArrivalTime.shift() as Process);
+            const proc = sortedByArrivalTime.shift() as Process;
+            readyQu.enqueue(proc);
+            const i = result.findIndex((itm) => itm.pid == proc.pid);
+            // note finish time will be set when the process run
+            result[i].interval.push({start: proc.arrivalTime, finish: -1, status: ProcessStatus.READY, level: -1 })
         }
+
+
         // speed the time if scene didn't finish yet but ready qu is empty
         if (readyQu.isEmpty() && sortedByArrivalTime.length > 0) {
             curTime += (sortedByArrivalTime[0].arrivalTime - curTime);
@@ -281,70 +292,7 @@ function MultiLevelFeedbackQueue(processQueue: Process[], quantumLengths: { leve
     return result;
 }
 
-// function SJF(processQueue: Process[]): SchedulerReturn {
-//     let currentTimeSlice = 0;
-//     const intervals: Intervals = [];
-//     processQueue = processQueue.sort((a, b) => (a.arrivalTime - b.arrivalTime));
-//     processQueue = processQueue.sort((a, b) => {
-//         if (a !== b) return 0;
-//         return a.cpuTime - b.cpuTime;
-//     })
-//     for (const process of processQueue) {
-//         if (process.arrivalTime > currentTimeSlice) currentTimeSlice = process.arrivalTime;
-//         process.finishTime = currentTimeSlice + process.cpuTime;
-//         process.firstRunTime = currentTimeSlice;
-//         intervals.push({ start: process.firstRunTime, finish: process.finishTime, pid: process.pid });
-//         currentTimeSlice += process.cpuTime;
-//     }
-//     return (
-//         {
-//             intervals: intervals,
-//             processesData: processQueue
-//                 .map((process => ({ pid: process.pid, responseTime: calcResponseTime(process), turnaround: calcTurnAroundTime(process) })))
-//         }
-//     )
-// }
-// function shortestTimeToCompletion(processQueue: Process[]): SchedulerReturn {
-//     let currentTimeSlice = 0;
-//     const intervals: Intervals = [];
-//     processQueue = processQueue.sort((a, b) => (a.cpuTime - b.cpuTime));
-//     while (true) {
-//         const currentProcessIndex = processQueue.findIndex(process => process.arrivalTime <= currentTimeSlice && process.cpuTime !== 0);
-//         if (currentProcessIndex === -1) break;
-//         const interval: Interval = { start: currentTimeSlice, pid: processQueue[currentProcessIndex].pid, finish: 0 }
-//         if (processQueue[currentProcessIndex].firstRunTime === -1) processQueue[currentProcessIndex].firstRunTime = currentTimeSlice;
-//         processQueue[currentProcessIndex].cpuTime--;
-//         currentTimeSlice++;
-//         if (processQueue[currentProcessIndex].cpuTime === 0) processQueue[currentProcessIndex].finishTime = currentTimeSlice;
-//         interval.finish = currentTimeSlice;
-//         intervals.push(interval)
-//     }
-//     //Refine intervals;
-//     let currentPid;
-//     let leftPointer = 0;
-//     let rightPointer = 0;
-//     const temp: Intervals = [];
-//     for (let i = 0; i < intervals.length; i++) {
-//         if (!currentPid) {
-//             currentPid = intervals[i].pid;
-//             continue;
-//         }
-//         if (currentPid === intervals[i].pid) {
-//             rightPointer = i;
-//         }
-//         if (currentPid !== intervals[i].pid) {
-//             temp.push({ start: intervals[leftPointer].start, finish: intervals[rightPointer].finish, pid: currentPid });
-//             currentPid = intervals[i].pid;
-//             leftPointer = i;
-//         }
-//     }
-//     return ({
-//         intervals: temp,
-//         processesData: processQueue
-//             .map((process => ({ pid: process.pid, responseTime: calcResponseTime(process), turnaround: calcTurnAroundTime(process) })))
-//     });
-// }
-//Round Robin, MLFQ
+
 
 function checkIntegrityOfInput(input: Process[]) {
     for (const process of input) {
