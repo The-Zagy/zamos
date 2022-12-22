@@ -1,5 +1,5 @@
 import { Interval, Process, ProcessFinalStats, ProcessStatus, SchedulerReturn } from "./types";
-import { scene, quantumLengths, RRQuantumLength } from './mlfq-rr-example.json'
+import { scene } from './fifo-example.json'
 // import { scene } from './STCF-example.json'
 import { calcResponseTime, calcTurnAroundTime } from "./utils";
 import { PriorityQueue } from "./helper";
@@ -9,7 +9,7 @@ let processQueue: Process[];
 let quantum: { level2: number, level1: number, level0: number };
 let RRQuantum: number;
 
-function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
+export function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
     let sortedByArrivalTime = processQueue.sort((a, b) => a.arrivalTime - b.arrivalTime);
     let currentTime: number = 0;
     const readyQueue: { arrive: number, process: Process }[] = [];
@@ -39,6 +39,10 @@ function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
                 return false;
             });
             if (canditate === -1) break;
+            if (sortedByArrivalTime[canditate].cpuTime == 0) {
+                sortedByArrivalTime.splice(canditate, 1);
+                continue;
+            } 
             readyQueue.push({ process: sortedByArrivalTime[canditate], arrive: currentTime });
             sortedByArrivalTime.splice(canditate, 1)
         }
@@ -106,7 +110,7 @@ function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
     }))
 }
 
-function SJF(processQueue: Process[]): SchedulerReturn {
+export function SJF(processQueue: Process[]): SchedulerReturn {
     let curTime = 0;
     //sort process list by arrivalTime to avoid any input errors [list for futur processes]
     let sortedByArrivalTime = processQueue.sort((a, b) => a.arrivalTime - b.arrivalTime);
@@ -179,6 +183,9 @@ function SJF(processQueue: Process[]): SchedulerReturn {
         //fill ready queue when process arrival time arrive, and add ready interval start for this process
         while (sortedByArrivalTime.length > 0 && curTime >= sortedByArrivalTime[0].arrivalTime ) {
             const proc = sortedByArrivalTime.shift() as Process;
+            if (proc.cpuTime <= 0) {
+                continue;
+            }
             readyQu.enqueue(proc);
             const i = result.findIndex((itm) => itm.pid == proc.pid);
             // note finish time will be set when the process run
@@ -196,7 +203,7 @@ function SJF(processQueue: Process[]): SchedulerReturn {
 
 // 3-level MLFQ, the topmost level (2) is the highest priority 
 // using Round Robin RR in all levels 
-function MultiLevelFeedbackQueue(processQueue: Process[], quantumLengths: { level2: number, level1: number, level0: number }): SchedulerReturn {
+export function MultiLevelFeedbackQueue(processQueue: Process[], quantumLengths: { level2: number, level1: number, level0: number }): SchedulerReturn {
     let readyQueueLevel2: { arrivalTime: number, process: Process, executed: number }[] = [];
     let readyQueueLevel1: { arrivalTime: number, process: Process, executed: number }[] = [];
     let readyQueueLevel0: { arrivalTime: number, process: Process, executed: number }[] = [];
@@ -412,7 +419,7 @@ function MultiLevelFeedbackQueue(processQueue: Process[], quantumLengths: { leve
     return result;
 }
 
-function RoundRobin(processQueue: Process[], quantum: number): SchedulerReturn {
+export function RoundRobin(processQueue: Process[], quantum: number): SchedulerReturn {
     let readyQueue: { arrivalTime: number, process: Process, executed: number }[] = [];
     let blockedQueue: { releaseTime: number, process: Process, executed: number }[] = [];
 
@@ -514,7 +521,7 @@ function RoundRobin(processQueue: Process[], quantum: number): SchedulerReturn {
     return result;
 }
 
-function shortestTimeToCompletion(processQueue: Process[]): SchedulerReturn {
+export function shortestTimeToCompletion(processQueue: Process[]): SchedulerReturn {
     let sortedByArrivalTime = processQueue.sort((a, b) => a.arrivalTime - b.arrivalTime);
     let currentTime: number = 0;
     const readyQueue: { arrive: number, process: Process }[] = [];
@@ -647,12 +654,11 @@ function checkIntegrityOfInput(input: Process[]) {
 }
 function main() {
     processQueue = (scene as unknown) as Process[];
-    RRQuantum = RRQuantumLength;
-    console.dir(RoundRobin(processQueue, RRQuantum), {depth: 4});
+    // RRQuantum = RRQuantumLength;
+    // console.dir(RoundRobin(processQueue, RRQuantum), {depth: 4});
 
     // quantum = (quantumLengths as unknown) as { level2: number, level1: number, level0: number };
     // console.dir(MultiLevelFeedbackQueue(processQueue, quantum), {depth: 4});
     
     // console.dir(shortestTimeToCompletion(processQueue), {depth: 4});
 }
-main();

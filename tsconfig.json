@@ -11,7 +11,8 @@
         "rootDir": "src",
         "strict": true,
         "types": [
-            "node"
+            "node",
+            "jest"
         ],
         "esModuleInterop": true,
         "moduleResolution": "node",
