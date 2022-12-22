@@ -646,12 +646,6 @@ export function shortestTimeToCompletion(processQueue: Process[]): SchedulerRetu
     }))
 }
 
-function checkIntegrityOfInput(input: Process[]) {
-    for (const process of input) {
-        //check that i/o is within execution time
-        //sort i/o list (start)
-    }
-}
 function main() {
     processQueue = (scene as unknown) as Process[];
     // RRQuantum = RRQuantumLength;
