@@ -14,8 +14,8 @@ function isFloat(n: number) {
 export function checkIntegrityOfInput(...input: Process[]) {
     for (const proc of input) {
         if (proc.pid <= 0) throw new Error("pid must be bigger than 0");
-        if (isFloat(proc.arrivalTime) && proc.arrivalTime < 0) throw new Error("arrival time must be bigger than 0 and integer");
-        if (isFloat(proc.cpuTime) && proc.cpuTime <= 0) throw new Error("cpu time  must be bigger than 0 and integer");
+        if (isFloat(proc.arrivalTime) || proc.arrivalTime < 0) throw new Error("arrival time must be bigger than 0 and integer");
+        if (isFloat(proc.cpuTime) || proc.cpuTime <= 0) throw new Error("cpu time  must be bigger than 0 and integer");
         //check that i/o is within execution time
         for (let i = 0; i < proc.io.length; ++i) {
             if (proc.io[i].start < 0) throw new Error("io start cannot be less than zero (0 <= start <= cpuTime)");

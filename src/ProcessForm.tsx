@@ -72,6 +72,10 @@ const ProcessForm: React.FC<{ processes: Process[], setProcesses: React.Dispatch
                         helpers.setFieldError("pid", "PID must be a number");
                         return;
                     }
+                    if (processes.find((i => i.pid === +values.pid))) {
+                        helpers.setFieldError("pid", "PID must be unique per process");
+                        return;
+                    }
                     const temp = "[" + values.io + "]";
                     let ioFormat: [number, number][] = [];
                     try {
@@ -90,6 +94,7 @@ const ProcessForm: React.FC<{ processes: Process[], setProcesses: React.Dispatch
                         pid: +values.pid,
                         status: ProcessStatus.READY
                     }
+                    console.log(newProcess)
                     try {
                         checkIntegrityOfInput(newProcess);
                     }
