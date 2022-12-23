@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
 
 import GanttChart from './GanttChart'
 import { ProcessStatus, SchedulerReturn } from './lib/types'
 import Navbar from './Navbar'
+import ProcessForm from './ProcessForm'
 const data: SchedulerReturn = [
   {
     arrivalTime: 0,
@@ -57,7 +57,9 @@ function App() {
   return (
     <main className='w-full'>
       <Navbar />
-      {<GanttChart processes={data} />}
+      <ProcessForm />
+
+      <GanttChart processes={data} />
     </main>
   )
 }
