@@ -30,37 +30,8 @@ const columns: Array<Column<Process>> = [{
 }
 ]
 
-const ProcessForm: React.FC = () => {
+const ProcessForm: React.FC<{ processes: Process[], setProcesses: React.Dispatch<React.SetStateAction<Process[]>> }> = ({ processes, setProcesses }) => {
 
-    const [processes, setProcesses] = useState<Process[]>([
-        {
-            "pid": 1,
-            "arrivalTime": 0,
-            "finishTime": -1,
-            "firstRunTime": -1,
-            "cpuTime": 10,
-            "io": [{ "start": 6, "length": 10 }],
-            "status": ProcessStatus.READY
-        },
-        {
-            "pid": 2,
-            "arrivalTime": 0,
-            "finishTime": -1,
-            "firstRunTime": -1,
-            "io": [{ "start": 9, "length": 15 }],
-            "cpuTime": 15,
-            "status": ProcessStatus.READY
-        },
-        {
-            "pid": 3,
-            "arrivalTime": 0,
-            "finishTime": -1,
-            "firstRunTime": -1,
-            "io": [{ "start": 3, "length": 5 }],
-            "cpuTime": 5,
-            "status": ProcessStatus.READY
-        }
-    ]);
     const tableData = useMemo(() => {
         return [...processes];
     }, [processes])
@@ -206,9 +177,9 @@ const ProcessForm: React.FC = () => {
                                     return <div>{i[1]}</div>;
                                 })}
                             </pre>
-                            <button type="submit" className="m-auto flex flex-col justify-center items-center mt-2 select-none hover:cursor-pointer text-left text-m">
+                            <button type="submit" className=" m-auto flex flex-col justify-center items-center mt-2 select-none hover:cursor-pointer text-left text-m">
                                 <div>Add a new Process</div>
-                                <PlusCircleIcon className="text-blue-500 h-10 w-10" />
+                                <PlusCircleIcon className="text-sky-600 active:text-sky-400 h-10 w-10" />
                             </button>
                         </Form>
                     )}
