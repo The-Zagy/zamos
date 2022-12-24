@@ -8,6 +8,7 @@ import SelectPolicy, { Policies } from './SelectPolicy'
 import ResultsTable from './ResultsTable'
 import { MultiLevelFeedbackQueue, RoundRobin, SJF, firstInFirstOut, shortestTimeToCompletion } from './lib/scheduling-policies'
 import { cloneDeep } from 'lodash'
+import Footer from './Footer'
 const simulate = (policy: Policies, processes: Process[]): ProcessFinalStats[] => {
   const copy = cloneDeep(processes)
   switch (policy) {
@@ -36,13 +37,14 @@ function App() {
     setFinalProcesses((_) => simulate(choice, processes));
   }
   return (
-    <main className='w-full'>
+    <main className='w-full min-h-screen'>
       <Navbar />
       <ProcessForm processes={processes} setProcesses={setProcesses} />
       <SelectPolicy setChoice={setChoice} />
       <button className='bg-sky-600 px-4 py-2 rounded-sm m-auto block text-white font-bold active:bg-sky-400' onClick={handleSimulate}>Simulate</button>
       {finalProcesses.length !== 0 && <GanttChart processes={finalProcesses} />}
       {finalProcesses.length !== 0 && <ResultsTable results={finalProcesses} />}
+      <Footer />
     </main>
   )
 }
