@@ -1,4 +1,4 @@
-import { ReactElement, useMemo } from "react";
+import { ReactElement, useEffect, useMemo } from "react";
 import { ProcessStatus, ProcessesFinalStats } from "./lib/types"
 import clsx from "clsx"
 // Define a function to generate the class names for the cells based on the status of the process
@@ -15,6 +15,7 @@ function getClassNames(status: ProcessStatus | undefined, base: string): string 
     }
 }
 const GanttChart: React.FC<{ processes: ProcessesFinalStats }> = ({ processes }) => {
+    console.log(processes)
     const findMaxFinishTime = (processes: ProcessesFinalStats): number => {
         return Math.max(...processes.map((i => i.finishTime)));
     }
@@ -39,7 +40,7 @@ const GanttChart: React.FC<{ processes: ProcessesFinalStats }> = ({ processes })
                         for (let i = 0; i <= maxFinishTime; i++) {
                             const currentState = process.interval.find((interval => {
                                 if (interval.start === interval.finish) return false;
-                                if (i >= interval.start && i <= interval.finish) {
+                                if (i >= interval.start && i < interval.finish) {
                                     return true;
                                 }
                                 return false;

@@ -1,32 +1,34 @@
-import { Process } from "./types";
-interface Queue {
-    enqueue(item: Process): void,
-    dequeue(): Process,
+interface Queue<T> {
+    enqueue(itm: T): void,
+    dequeue(): T,
     isEmpty(): boolean,
     size(): number,
-    peek(): Process
+    peek(): T,
 }
-class Node {
-    data: Process;
-    next: Node | null;
-    constructor(item: Process) {
-        this.data = item;
+class Node<T> {
+    data: T;
+    next: Node<T> | null;
+    constructor(itm: T) {
+        this.data = itm;
         this.next = null
     }
 }
-export class PriorityQueue implements Queue {
+type SortFunction<T> = (cur: T, toBeAdded: T) => boolean
+export class PriorityQueue<T> implements Queue<T>{
 
     private length: number = 0;
-    private head: (Node | null) = null;
-    constructor() {
+    private head: (Node<T> | null) = null;
+    private sortFunction: SortFunction<T>
+    constructor(sortFn: SortFunction<T>) {
         this.length = 0;
         this.head = null;
+        this.sortFunction = sortFn;
     }
-    enqueue(itm: Process) {
+    enqueue(itm: T) {
         let node = new Node(itm)
         let cur = this.head;
         let pre = null;
-        while (cur != null && itm.cpuTime > cur.data.cpuTime) {
+        while (cur != null && this.sortFunction(cur.data, node.data)) {
             pre = cur;
             cur = cur.next;
         }
@@ -40,7 +42,7 @@ export class PriorityQueue implements Queue {
         node.next = cur;
         this.length++;
     }
-    dequeue(): Process {
+    dequeue(): T {
         if (!this.head) {
             throw new Error("Queue is empty");
         }
@@ -55,7 +57,7 @@ export class PriorityQueue implements Queue {
     size(): number {
         return this.length
     }
-    peek(): Process {
+    peek(): T {
         if (this.length === 0) throw new Error("Nothing to peek at since queue is empty")
         return this.head!.data
     }

@@ -88,7 +88,7 @@ const ProcessForm: React.FC<{ processes: Process[], setProcesses: React.Dispatch
                     const newProcess: Process = {
                         arrivalTime: +values.arrivalTime,
                         cpuTime: +values.cpuTime,
-                        io: ioFormat.map(i => ({ start: i[0], length: i[0] })),
+                        io: ioFormat.map(i => ({ start: i[0], length: i[1] })),
                         firstRunTime: -1,
                         finishTime: -1,
                         pid: +values.pid,
