@@ -17,26 +17,6 @@ a simulator to how the OS scheduler will act with specific processes scenerio
 - Round Robin
 
 ## Getting Started
-
-> it can work with ".json" file or the program has methods to create random workload
-- the interface the file will be tested against
-```
-enum ProcessStatus  {
-    RUNNING = 'running',
-    READY = 'ready',
-    BLOCKED = 'blocked'
-}
-
-interface Process {
-    pid: number;
-    arrivalTime: number;
-    finishTime: number;
-    firstRunTime: number;
-    length?: number;
-    status: ProcessStatus
-}
-
-```
-- `npm install`
-
-- `npm start -- scene.json` 
+`npm install`
+`npm run dev`
+to start developing
