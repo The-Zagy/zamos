@@ -37,15 +37,18 @@ function App() {
     setFinalProcesses((_) => simulate(choice, processes));
   }
   return (
-    <main className='w-full min-h-screen'>
-      <Navbar />
-      <ProcessForm processes={processes} setProcesses={setProcesses} />
-      <SelectPolicy setChoice={setChoice} />
-      <button className='bg-sky-600 px-4 py-2 rounded-sm m-auto block text-white font-bold active:bg-sky-400' onClick={handleSimulate}>Simulate</button>
-      {finalProcesses.length !== 0 && <GanttChart processes={finalProcesses} />}
-      {finalProcesses.length !== 0 && <ResultsTable results={finalProcesses} />}
+    <>
+      <main className='w-full min-h-screen'>
+        <Navbar />
+        <ProcessForm processes={processes} setProcesses={setProcesses} />
+        <SelectPolicy setChoice={setChoice} />
+        <button className='bg-sky-600 px-4 py-2 rounded-sm m-auto block text-white font-bold active:bg-sky-400' onClick={handleSimulate}>Simulate</button>
+        {finalProcesses.length !== 0 && <GanttChart processes={finalProcesses} />}
+        {finalProcesses.length !== 0 && <ResultsTable results={finalProcesses} />}
+
+      </main>
       <Footer />
-    </main>
+    </>
   )
 }
 
