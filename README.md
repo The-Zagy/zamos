@@ -2,19 +2,17 @@
 
 a simulator to how the OS scheduler will act with specific processes scenerio 
 
-## Supported Algo
+## Supported Scheduling Policies
 
 - First Come First Served
 	
 - Shortest Job First
 	
-- Shortest Remaining Time First
-	
-- Priority-based (non-preemptive)
-	
-- Priority-based (preemptive)
-	
+- Shortest Completion Time First
+
 - Round Robin
+
+- Multi-level Feedback Queue 
 
 ## Getting Started
 `npm install`
