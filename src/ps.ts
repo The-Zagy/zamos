@@ -48,14 +48,14 @@ const extractNumber = (str: string) => {
     if (!res) throw new Error("No numbers to extract");
     return res[0];
 }
-const extractStatusField = (line: string): {filed: string, value: string} => {
+const extractStatusField = (line: string): { filed: string, value: string } => {
     // const regex = /: *(\S+)/;
     // const match = line.match(regex);
     // // const match = regex.exec(line);
     // if(!match) throw new Error('line don"t go with the regex');
     // const word = match[1];
     // return word;
-    
+
     //TODO change back to regex stop being a loser
     const splited = line.split(':')
     if (splited.length != 2) throw new Error('not a status line');
@@ -63,7 +63,7 @@ const extractStatusField = (line: string): {filed: string, value: string} => {
         filed: splited[0],
         value: splited[1]
     }
-    
+
 }
 
 
@@ -93,19 +93,19 @@ const extractStatusField = (line: string): {filed: string, value: string} => {
 
 
 // return info about cpu state like total usage
-function readCpuStat(): {timeTotal: number} {
+function readCpuStat(): { timeTotal: number } {
     const CPU_STAT = fs.readFileSync(`/proc/stat`, { encoding: 'utf-8' }).split('\n')[0].split(' ');
     let timeTotal = 0;
     for (let i = 1; i < CPU_STAT.length; ++i) {
         timeTotal += +CPU_STAT[i];
     }
-    return {timeTotal};
+    return { timeTotal };
 }
 
 // [utime, stime, startTime] start time in clock ticks to convert it to seconds need to divide by "sysconf(_SC_CLK_TCK)"
-function readProcStat(pid: string): {utime: number, stime: number, startTime: number} {
+function readProcStat(pid: string): { utime: number, stime: number, startTime: number } {
     const STAT = fs.readFileSync(`/proc/${pid}/stat`, { encoding: 'utf-8' }).split(' ');
-    return {utime: +STAT[STATIndices.UTIME], stime: +STAT[STATIndices.STIME], startTime: +STAT[STATIndices.START_TIME]}
+    return { utime: +STAT[STATIndices.UTIME], stime: +STAT[STATIndices.STIME], startTime: +STAT[STATIndices.START_TIME] }
 }
 // function will be used to display one process cpuUsage in real time[kinda like top but only for one process]
 async function readCpuUsageRealTime(pid: string): Promise<number> {
@@ -115,7 +115,7 @@ async function readCpuUsageRealTime(pid: string): Promise<number> {
         await delay(1000);
         const totalCpuTimeAfter = readCpuStat();
         const procStatAfter = readProcStat(pid);
-        return  (100 * ((procStatAfter['utime'] - procStatBefore['utime']) + (procStatAfter['stime'] - procStatBefore['stime'])) / (totalCpuTimeAfter.timeTotal - totalCpuTimeBefore.timeTotal));
+        return (100 * ((procStatAfter['utime'] - procStatBefore['utime']) + (procStatAfter['stime'] - procStatBefore['stime'])) / (totalCpuTimeAfter.timeTotal - totalCpuTimeBefore.timeTotal));
     } catch {
         throw new Error('process doesnot exist or ended');
     }
@@ -132,13 +132,16 @@ async function readCpuUsageRealTime(pid: string): Promise<number> {
     sysconf(_SC_CLK_TCK)).
  *  
  */
-function readCpuUsage(pid: string): {CPU: number} {
+function readCpuUsage(procStat: {
+    utime: number;
+    stime: number;
+    startTime: number;
+}): { CPU: number } {
     const totalCpuTime = readCpuStat();
-    const procStat = readProcStat(pid);
-    return {CPU: +(100*((procStat['utime']+procStat['stime'])/totalCpuTime.timeTotal)).toFixed(2)};
+    return { CPU: +(100 * ((procStat['utime'] + procStat['stime']) / totalCpuTime.timeTotal)).toFixed(2) };
 }
 
-type ProcBasicInfo = {NAME: string, STAT: string, PPID: string, UID: string, CMD: string, MEM: number};
+type ProcBasicInfo = { NAME: string, STAT: string, PPID: string, UID: string, CMD: string, MEM: number };
 
 function readProcBasicInfo(pid: string): ProcBasicInfo {
     // status file is divided by \n in that shape
@@ -146,8 +149,8 @@ function readProcBasicInfo(pid: string): ProcBasicInfo {
      * Name:  name
      * data:  value
      */
-    const STATUS = fs.readFileSync(`/proc/${pid}/status`, {encoding: 'utf-8'}).split("\n");
-    const COMMAND = fs.readFileSync(`/proc/${pid}/cmdline`, {encoding: 'utf-8'});
+    const STATUS = fs.readFileSync(`/proc/${pid}/status`, { encoding: 'utf-8' }).split("\n");
+    const COMMAND = fs.readFileSync(`/proc/${pid}/cmdline`, { encoding: 'utf-8' });
     return {
         CMD: COMMAND.slice(0, 20),
         NAME: extractStatusField(STATUS[STATUSIndices.NAME]).value.trim(),
@@ -167,15 +170,19 @@ function readPhyMemUsage(pid: string): number {
     return +(((+STATM[STATMIndices.RESIDENT] + +STATM[STATMIndices.DATA_AND_STACK])) / 1024).toFixed(2);
 }
 // function to cause delay in code execution
-const delay = (ms: number) => {return new Promise(resolve => setTimeout(resolve, ms))}
+const delay = (ms: number) => { return new Promise(resolve => setTimeout(resolve, ms)) }
 
 //function return when the process started and for how long
-function  readStartTime(pid: string, clockTicksPerSecond: number = 100): {startDate: string, timeSinceStarted: string}{
-    const procStat = readProcStat(pid);
+function readStartTime(procStat: {
+    utime: number;
+    stime: number;
+    startTime: number;
+}, clockTicksPerSecond: number = 100): { startDate: string, timeSinceStarted: string } {
+
     // Convert the start time to seconds
     let startTimeInSeconds = procStat.startTime / clockTicksPerSecond;
     // startTime from stat is => The time the process started after system boot
-    startTimeInSeconds = os.uptime() -  startTimeInSeconds;
+    startTimeInSeconds = os.uptime() - startTimeInSeconds;
     // Convert the start time in seconds to a date object
     const startTimeInMS = Date.now() - (startTimeInSeconds * 1000);
     const startTime = new Date(startTimeInMS);
@@ -184,37 +191,94 @@ function  readStartTime(pid: string, clockTicksPerSecond: number = 100): {startD
         minute: '2-digit',
     });
     const localizedTime = timeFormat.format(startTime);
-    return {startDate: localizedTime, timeSinceStarted:((Date.now() - startTimeInMS)/1000).toFixed(2)}
+    return { startDate: localizedTime, timeSinceStarted: ((Date.now() - startTimeInMS) / 1000).toFixed(2) }
 
 }
+//todo add flags to main to sort by something
 async function main() {
-    if (os.type() !== 'Linux') throw new Error('works only on Linux sorry'); 
+    if (os.type() !== 'Linux') throw new Error('works only on Linux sorry');
     // read the proc file system to get snapshot for all processes in the system
     const PROC = fs.readdirSync('/proc').sort();
     // clk tics is fixed per system so calc it once before running the program 
     const CPU_STAT = fs.readFileSync(`/proc/stat`, { encoding: 'utf-8' });
     console.log(__dirname)
-    const clockTicksPerSecond = (await execPromisified(path.join(__dirname,'/clkTics'))).stdout;
+    let clockTicksPerSecond: number;
+    try {
+        let res = (await execPromisified(path.join(__dirname, '/clkTics')));
+        clockTicksPerSecond = +res.stdout;
+    } catch (err) {
+        clockTicksPerSecond = 100;
+    }
     console.log(clockTicksPerSecond)
     // store all the data in array to make sort utility easier
-    const curSnapShot: ProcessInfo[] = [];
+
 
     //each dir in proc consider to be process id[pid]
-    for (const pid of PROC) {
-        try{
-            // proc contain another dirs/files that are not processes so ignoring them
-            if (!Number.isInteger(+pid)) continue;
-            const procBasicInfo = readProcBasicInfo(pid);
-            const cpuUsage = readCpuUsage(pid);
-            const startTime = readStartTime(pid)
-            curSnapShot.push({PID: pid, ...procBasicInfo, CPU: cpuUsage.CPU, START: startTime.startDate, TIME: startTime.timeSinceStarted, MEM: readPhyMemUsage(pid) })
-    } catch {
-        // process ended so just ignore it and jump to the next one 
-        // todo check if it was already added to the curSnapShot array and remove it
-        continue;
+    function ps() {
+        const curSnapShot: ProcessInfo[] = [];
+        for (const pid of PROC) {
+            try {
+                // proc contain another dirs/files that are not processes so ignoring them
+                if (!Number.isInteger(+pid)) continue;
+                const procBasicInfo = readProcBasicInfo(pid);
+                const stat = readProcStat(pid);
+                const cpuUsage = readCpuUsage(stat);
+                const startTime = readStartTime(stat)
+                curSnapShot.push({ PID: pid, ...procBasicInfo, CPU: cpuUsage.CPU, START: startTime.startDate, TIME: startTime.timeSinceStarted, MEM: readPhyMemUsage(pid) })
+            } catch {
+                // process ended so just ignore it and jump to the next one 
+                // todo check if it was already added to the curSnapShot array and remove it
+                continue;
+            }
+        }
+        console.table(curSnapShot.sort((a, b) => b['MEM'] - a['MEM']).splice(0, 20))
     }
+    async function psWithSampling() {
+        const resolved = (await Promise.all(PROC.filter((pid) => Number.isInteger(+pid)).map(async (pid) => {
+            try {
+                // proc contain another dirs/files that are not processes so ignoring them
+                const procBasicInfo = readProcBasicInfo(pid);
+                const stat = readProcStat(pid);
+                const cpuUsage = await readCpuUsageRealTime(pid);
+                const startTime = readStartTime(stat)
+                return ({
+                    PID: pid,
+                    ...procBasicInfo
+                    , CPU: cpuUsage,
+                    START: startTime.startDate,
+                    TIME: startTime.timeSinceStarted,
+                    MEM: readPhyMemUsage(pid)
+                })
+            } catch (err) {
+                //if error happened return undefined then filter it later
+                return undefined;
+            }
+        }))).filter((i) => i !== undefined) as ProcessInfo[]
+        console.clear()
+        console.table(resolved.sort((a, b) => b['MEM'] - a['MEM']).splice(0, 20))
     }
-    console.table(curSnapShot.sort((a, b) => b['MEM'] - a['MEM']).splice(0, 20))
+
+    function top() {
+        ps();
+        setInterval(() => {
+            console.clear()
+            ps()
+        }, 1000);
+    }
+
+    function topWithSampling() {
+        psWithSampling();
+        setInterval(async () => {
+            console.clear()
+            await psWithSampling()
+        }, 1000);
+    }
+    return ({
+        ps,
+        psWithSampling,
+        top,
+        topWithSampling
+    })
 }
 
 main()
