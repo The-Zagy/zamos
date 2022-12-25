@@ -4,12 +4,18 @@
  */
 import fs from 'fs';
 import os from 'os';
+import { exec } from 'child_process'
+import { promisify } from 'util'
+import path from 'path'
+const execPromisified = promisify(exec);
+
 enum STATUSIndices {
     NAME = 0,
     STAT = 2,
     PID = 5,
     PARENT_PID = 6,
     USER_ID = 8,
+    VmRSS = 21
 }
 enum STATIndices {
     UTIME = 13,
@@ -26,20 +32,41 @@ enum STATMIndices {
 }
 //Yes Status and stat are two different files don't get confused
 type ProcessInfo = {
-    USER: string,
-    PID: number,
+    NAME: string,
+    UID: string,
+    PID: string,
+    PPID: string,
     CPU: number,
     MEM: number,
     STAT: string,
     START: string,
     TIME: string,
-    COMMAND: string
+    CMD: string
 }
 const extractNumber = (str: string) => {
     let res = str.match(/\d+/);
     if (!res) throw new Error("No numbers to extract");
     return res[0];
 }
+const extractStatusField = (line: string): {filed: string, value: string} => {
+    // const regex = /: *(\S+)/;
+    // const match = line.match(regex);
+    // // const match = regex.exec(line);
+    // if(!match) throw new Error('line don"t go with the regex');
+    // const word = match[1];
+    // return word;
+    
+    //TODO change back to regex stop being a loser
+    const splited = line.split(':')
+    if (splited.length != 2) throw new Error('not a status line');
+    return {
+        filed: splited[0],
+        value: splited[1]
+    }
+    
+}
+
+
 /**
  * Resident Set Size: number of pages the process has
     in real memory.  This is just the pages which count
@@ -63,87 +90,131 @@ const extractNumber = (str: string) => {
             data       (6) data + stack
             dt         (7) dirty pages (unused since Linux 2.6; always 0)
  */
-function main() {
-    const directories = fs.readdirSync('/proc').sort();
-    const MEMINFO = fs.readFileSync(`/proc/meminfo`, { encoding: 'utf-8' }).split('\n')[0];
-    const total_mem = +extractNumber(MEMINFO);
-    const numCpus = os.cpus().length;
-    // const processesInfo:ProcessInfo[]=[];
-    const data: [number, number, number][] = [];
-    for (const directory of directories) {
-        if (!Number.isInteger(+directory)) continue;
-        const ticksPerSecond = os.uptime();
-        // const CPU_STAT = fs.readFileSync(`/proc/stat`, { encoding: 'utf-8' }).split('\n')[0].split(' ');
-        // // let cpuUsage = 0;
-        // for (let i = 1; i < CPU_STAT.length; ++i) {
-        //     cpuUsage += +CPU_STAT[i];
-        // }
-        // if (+directory == 2295) {
-        //     const statT = fs.readFileSync(`/proc/${directory}/stat`, {encoding: 'utf-8'}).split(' ');
-        //     // console.table(statT);
-        // }
-        // const STATUS = fs.readFileSync(`/proc/${directory}/status`, {encoding: 'utf-8'}).split("\n");
-        const STATM = fs.readFileSync(`/proc/${directory}/statm`, { encoding: 'utf-8' }).split(" ");
-        // const STAT = fs.readFileSync(`/proc/${directory}/stat`, { encoding: 'utf-8' }).split(' ');
-        //check this out to understand the formula below
-        //https://stackoverflow.com/questions/1420426/how-to-calculate-the-cpu-usage-of-a-process-by-pid-in-linux-from-c/1424556#1424556
-        // let total_time = +STAT[STATIndices.UTIME] + +STAT[STATIndices.STIME] + +STAT[STATIndices.CUT_TIME] + +STAT[STATIndices.CS_TIME];
-        // console.log(`process total ${total_time}`);
-        // const cpu_percentage = (total_time / cpuUsage) * 100;
-        const statFile = fs.readFileSync(`/proc/${directory}/stat`, 'utf8');
-        const fields = statFile.split(' ');
-        const utime = parseInt(fields[13], 10);
-        const stime = parseInt(fields[14], 10);
-        const starttime = parseInt(fields[21], 10);
 
-        const elapsed = (utime + stime) / numCpus / ticksPerSecond;
-        const uptime = os.uptime() - starttime / ticksPerSecond;
-        const cpuUsage = (elapsed / uptime) * 100;
-        const mem = ((+STATM[STATMIndices.RESIDENT] + +STATM[STATMIndices.DATA_AND_STACK])) / 1024;
-        data.push([+directory, +cpuUsage.toFixed(3), +mem.toFixed(3)])
-        // console.log(`cpu usage for ${directory} =\t ${cpu_percentage.toFixed(3)} mem usage = \t${mem}`)
-        // const COMMAND = fs.readFileSync(`/proc/${directory}/cmdline`, {encoding: 'utf-8'});
-        // const SYS_UPTIME = fs.readFileSync(`/proc/uptime`, {encoding: 'utf-8'});
-        // console.log(`PID: ${directory}\t${st.split('\n')[0]}\tcmd: ${cmdl.split(':').toString()}`, '\n*************************************\n');
+
+// return info about cpu state like total usage
+function readCpuStat(): {timeTotal: number} {
+    const CPU_STAT = fs.readFileSync(`/proc/stat`, { encoding: 'utf-8' }).split('\n')[0].split(' ');
+    let timeTotal = 0;
+    for (let i = 1; i < CPU_STAT.length; ++i) {
+        timeTotal += +CPU_STAT[i];
     }
-    console.table(data.sort((a, b) => a[1] - b[1]))
+    return {timeTotal};
 }
 
-const cpuUsage = () => {
-        const directories = fs.readdirSync('/proc').sort();
-        const numCpus = os.cpus().length;
-        const data: [number, number][] = [];
-        for (const pid of directories) {
+// [utime, stime, startTime] start time in clock ticks to convert it to seconds need to divide by "sysconf(_SC_CLK_TCK)"
+function readProcStat(pid: string): {utime: number, stime: number, startTime: number} {
+    const STAT = fs.readFileSync(`/proc/${pid}/stat`, { encoding: 'utf-8' }).split(' ');
+    return {utime: +STAT[STATIndices.UTIME], stime: +STAT[STATIndices.STIME], startTime: +STAT[STATIndices.START_TIME]}
+}
+// function will be used to display one process cpuUsage in real time[kinda like top but only for one process]
+async function readCpuUsageRealTime(pid: string): Promise<number> {
+    try {
+        const totalCpuTimeBefore = readCpuStat();
+        const procStatBefore = readProcStat(pid);
+        await delay(1000);
+        const totalCpuTimeAfter = readCpuStat();
+        const procStatAfter = readProcStat(pid);
+        return  (100 * ((procStatAfter['utime'] - procStatBefore['utime']) + (procStatAfter['stime'] - procStatBefore['stime'])) / (totalCpuTimeAfter.timeTotal - totalCpuTimeBefore.timeTotal));
+    } catch {
+        throw new Error('process doesnot exist or ended');
+    }
+}
+
+// return both cpu usage and length of the process
+/**
+ * 
+ *  (22) starttime  %llu
+    The time the process started after system boot.  In
+    kernels before Linux 2.6, this value was expressed
+    in jiffies.  Since Linux 2.6, the value is
+    expressed in clock ticks (divide by
+    sysconf(_SC_CLK_TCK)).
+ *  
+ */
+function readCpuUsage(pid: string): {CPU: number} {
+    const totalCpuTime = readCpuStat();
+    const procStat = readProcStat(pid);
+    return {CPU: +(100*((procStat['utime']+procStat['stime'])/totalCpuTime.timeTotal)).toFixed(2)};
+}
+
+type ProcBasicInfo = {NAME: string, STAT: string, PPID: string, UID: string, CMD: string, MEM: number};
+
+function readProcBasicInfo(pid: string): ProcBasicInfo {
+    // status file is divided by \n in that shape
+    /**
+     * Name:  name
+     * data:  value
+     */
+    const STATUS = fs.readFileSync(`/proc/${pid}/status`, {encoding: 'utf-8'}).split("\n");
+    const COMMAND = fs.readFileSync(`/proc/${pid}/cmdline`, {encoding: 'utf-8'});
+    return {
+        CMD: COMMAND.slice(0, 20),
+        NAME: extractStatusField(STATUS[STATUSIndices.NAME]).value.trim(),
+        STAT: extractStatusField(STATUS[STATUSIndices.STAT]).value.trim(),
+        PPID: extractStatusField(STATUS[STATUSIndices.PARENT_PID]).value.trim(),
+        UID: extractNumber(STATUS[STATUSIndices.USER_ID]),
+        MEM: +extractNumber(STATUS[STATUSIndices.VmRSS]) / 1024
+    }
+}
+/**
+ * Why ps is "wrong" in memory usage
+
+Depending on how you look at it, ps is not reporting the real memory usage of processes. What it is really doing is showing how much real memory each process would take up if it were the only process running. Of course, a typical Linux machine has several dozen processes running at any given time, which means that the VSZ and RSS numbers reported by ps are almost definitely wrong.
+ */
+function readPhyMemUsage(pid: string): number {
+    const STATM = fs.readFileSync(`/proc/${pid}/statm`, { encoding: 'utf-8' }).split(" ");
+    return +(((+STATM[STATMIndices.RESIDENT] + +STATM[STATMIndices.DATA_AND_STACK])) / 1024).toFixed(2);
+}
+// function to cause delay in code execution
+const delay = (ms: number) => {return new Promise(resolve => setTimeout(resolve, ms))}
+
+//function return when the process started and for how long
+function  readStartTime(pid: string, clockTicksPerSecond: number = 100): {startDate: string, timeSinceStarted: string}{
+    const procStat = readProcStat(pid);
+    // Convert the start time to seconds
+    let startTimeInSeconds = procStat.startTime / clockTicksPerSecond;
+    // startTime from stat is => The time the process started after system boot
+    startTimeInSeconds = os.uptime() -  startTimeInSeconds;
+    // Convert the start time in seconds to a date object
+    const startTimeInMS = Date.now() - (startTimeInSeconds * 1000);
+    const startTime = new Date(startTimeInMS);
+    const timeFormat = new Intl.DateTimeFormat(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+    const localizedTime = timeFormat.format(startTime);
+    return {startDate: localizedTime, timeSinceStarted:((Date.now() - startTimeInMS)/1000).toFixed(2)}
+
+}
+async function main() {
+    if (os.type() !== 'Linux') throw new Error('works only on Linux sorry'); 
+    // read the proc file system to get snapshot for all processes in the system
+    const PROC = fs.readdirSync('/proc').sort();
+    // clk tics is fixed per system so calc it once before running the program 
+    const CPU_STAT = fs.readFileSync(`/proc/stat`, { encoding: 'utf-8' });
+    console.log(__dirname)
+    const clockTicksPerSecond = (await execPromisified(path.join(__dirname,'/clkTics'))).stdout;
+    console.log(clockTicksPerSecond)
+    // store all the data in array to make sort utility easier
+    const curSnapShot: ProcessInfo[] = [];
+
+    //each dir in proc consider to be process id[pid]
+    for (const pid of PROC) {
+        try{
+            // proc contain another dirs/files that are not processes so ignoring them
             if (!Number.isInteger(+pid)) continue;
-            // Get the number of clock ticks per second on the system
-            const ticksPerSecond = os.uptime();
+            const procBasicInfo = readProcBasicInfo(pid);
+            const cpuUsage = readCpuUsage(pid);
+            const startTime = readStartTime(pid)
+            curSnapShot.push({PID: pid, ...procBasicInfo, CPU: cpuUsage.CPU, START: startTime.startDate, TIME: startTime.timeSinceStarted, MEM: readPhyMemUsage(pid) })
+    } catch {
+        // process ended so just ignore it and jump to the next one 
+        // todo check if it was already added to the curSnapShot array and remove it
+        continue;
+    }
+    }
+    console.table(curSnapShot.sort((a, b) => b['MEM'] - a['MEM']).splice(0, 20))
+}
 
-            // Read the /proc/[pid]/stat file for the process
-            const statFile = fs.readFileSync(`/proc/${pid}/stat`, 'utf8');
-
-            // Split the file into fields
-            const fields = statFile.split(' ');
-
-            // Extract the utime and stime fields (user time and system time)
-            const utime = parseInt(fields[13], 10);
-            const stime = parseInt(fields[14], 10);
-
-            // Extract the starttime field (time the process started)
-            const starttime = parseInt(fields[21], 10);
-
-            // Calculate the elapsed time for the process (utime + stime)
-            const elapsed = (utime + stime) / numCpus / ticksPerSecond;
-
-            // Calculate the uptime of the system
-            const uptime = os.uptime() - starttime / ticksPerSecond;
-
-            // Calculate the CPU usage as a percentage
-            const cpuUsage = elapsed / uptime * 100 * 100;
-            data.push([+pid, cpuUsage]);
-        }
-        console.table(data.sort((a, b) => b[1] - a[1]).slice(0, 10))
-} 
-setInterval(() => { console.clear();
-    cpuUsage()
-}, 1000);
-
+main()

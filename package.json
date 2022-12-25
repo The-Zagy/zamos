@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "bin": {
+    "psdemo": "./src/ps.ts"
+  },
   "scripts": {
     "test": "jest",
     "dev": "npx ts-node src/index.ts",
