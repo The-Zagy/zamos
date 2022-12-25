@@ -575,8 +575,7 @@ export function shortestTimeToCompletionFirst(processQueue: Process[]): Schedule
         if (result[index].firstRunTime === -1) result[index].firstRunTime = currentTime;
         readyQueue.splice(pIndex, 1);
 
-
-        if(runningProcess.io.length && exe === runningProcess.io[0].start) {
+        if(runningProcess.io.length && runningProcess.io[0].start === 0) {
             result[index].interval.push({ start: currentTime, finish: currentTime + runningProcess.io[0].length, status: ProcessStatus.BLOCKED });
             blockedQueue.push({ releaseTime: currentTime + runningProcess.io[0].length, process: runningProcess, executed: exe })
             runningProcess.io.shift();
@@ -586,7 +585,17 @@ export function shortestTimeToCompletionFirst(processQueue: Process[]): Schedule
             currentTime++;
             runningProcess.cpuTime--;
             exe++;
-            readyQueue.push({ arrivalTime: currentTime, process: runningProcess, executed: exe });
+            if(runningProcess.io.length && exe === runningProcess.io[0].start) {
+                result[index].interval.push({ start: currentTime, finish: currentTime + runningProcess.io[0].length, status: ProcessStatus.BLOCKED });
+                blockedQueue.push({ releaseTime: currentTime + runningProcess.io[0].length, process: runningProcess, executed: exe })
+                runningProcess.io.shift();
+            }
+            else if(runningProcess.cpuTime === 0) {
+                result[index].finishTime = currentTime;
+                result[index].turnaround = calcTurnAroundTime(result[index].finishTime, result[index].arrivalTime);
+                result[index].responseTime = calcResponseTime(result[index].firstRunTime, result[index].arrivalTime);
+            }
+            else readyQueue.push({ arrivalTime: currentTime, process: runningProcess, executed: exe });
         }
     }
     return result;
