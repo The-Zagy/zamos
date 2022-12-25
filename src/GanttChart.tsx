@@ -1,6 +1,6 @@
 import { ReactElement, useEffect, useMemo } from "react";
 import { ProcessStatus, ProcessesFinalStats } from "./lib/types"
-import clsx from "clsx"
+import clsx from "clsx";
 // Define a function to generate the class names for the cells based on the status of the process
 function getClassNames(status: ProcessStatus | undefined, base: string): string {
     switch (status) {
