@@ -4,14 +4,14 @@ import { PriorityQueue } from "./helpers";
 let processQueue: Process[];
 let quantum: { level2: number, level1: number, level0: number };
 export function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
-    let sortedByArrivalTime = processQueue.sort((a, b) => a.arrivalTime - b.arrivalTime);
+    let yetToCome = processQueue.sort((a, b) => a.arrivalTime - b.arrivalTime);
     let currentTime: number = 0;
-    const readyQueue: { arrive: number, process: Process }[] = [];
-    let blockedQueue: { process: Process, releaseTime: number }[] = [];
+    const readyQueue: { arrive: number, process: Process, executed: number }[] = [];
+    let blockedQueue: { process: Process, releaseTime: number, executed: number }[] = [];
     let currentlyRunning: null | Process = null;
     let currentlyRunningTime: number = 0;
     let currentlyRunningStartTime = 0;
-    const result: SchedulerReturn = sortedByArrivalTime.map((i => {
+    const result: SchedulerReturn = yetToCome.map((i => {
         return (
             {
                 arrivalTime: i.arrivalTime,
@@ -25,36 +25,40 @@ export function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
         )
     }));
 
-    while (blockedQueue.length !== 0 || readyQueue.length !== 0 || sortedByArrivalTime.length !== 0 || currentlyRunning !== null) {
+    while (blockedQueue.length !== 0 || readyQueue.length !== 0 || yetToCome.length !== 0 || currentlyRunning !== null) {
         //find canditates to be ready from the input and the blocked queue and push them into ready queue
-        while (sortedByArrivalTime.length !== 0) {
-            const canditate = sortedByArrivalTime.findIndex((i) => {
+
+        //Find Canditates in the processes that are yet to come in the future
+        while (yetToCome.length !== 0) {
+            const canditate = yetToCome.findIndex((i) => {
                 if (i.arrivalTime <= currentTime) return true;
                 return false;
             });
             if (canditate === -1) break;
-            if (sortedByArrivalTime[canditate].cpuTime == 0) {
-                sortedByArrivalTime.splice(canditate, 1);
+            if (yetToCome[canditate].cpuTime == 0) {
+                yetToCome.splice(canditate, 1);
                 continue;
             }
-            readyQueue.push({ process: sortedByArrivalTime[canditate], arrive: currentTime });
-            sortedByArrivalTime.splice(canditate, 1)
+            readyQueue.push({ process: yetToCome[canditate], arrive: currentTime, executed: 0 });
+            yetToCome.splice(canditate, 1)
         }
+        //Find canditates in the blocked queue 
         while (blockedQueue.length !== 0) {
             const canditate = blockedQueue.findIndex((i) => {
                 if (i.releaseTime <= currentTime) return true;
                 return false
             })
             if (canditate === -1) break;
-            readyQueue.push({ process: blockedQueue[canditate].process, arrive: currentTime });
+            readyQueue.push({ process: blockedQueue[canditate].process, arrive: currentTime, executed: blockedQueue[canditate].executed });
             blockedQueue.splice(canditate, 1);
         }
-        //if nothing is running dequeue from ready queue that is the queue isn't empty
-        //if it is indeed empty just wait for the next second maybe it won't be
+        //if nothing is running dequeue from ready queue, that is if the queue isn't empty.
+        //if it is indeed empty just wait for the next second maybe it won't be.
         if (currentlyRunning === null) {
             if (readyQueue.length !== 0) {
                 const temp = readyQueue.shift();
                 currentlyRunning = temp!.process as Process;
+                currentlyRunningTime = temp!.executed;
                 let index = result.findIndex(i => i.pid === currentlyRunning!.pid);
                 result[index].interval.push({ start: temp!.arrive, finish: currentTime, status: ProcessStatus.READY })
                 currentlyRunningStartTime = currentTime;
@@ -77,7 +81,8 @@ export function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
             const ioPeriod = currentlyRunning.io.shift();
             blockedQueue.push({
                 process: currentlyRunning,
-                releaseTime: currentTime + ioPeriod!.length
+                releaseTime: currentTime + ioPeriod!.length,
+                executed: currentlyRunningTime
             })
             let index = result.findIndex(i => i.pid === currentlyRunning!.pid);
             result[index].interval.push({ start: currentlyRunningStartTime, finish: currentTime, status: ProcessStatus.RUNNING });
