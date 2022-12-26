@@ -124,7 +124,7 @@ export function SJF(processQueue: Process[]): SchedulerReturn {
     //sort process list by arrivalTime to avoid any input errors [list for futur processes]
     let sortedByArrivalTime = processQueue.sort((a, b) => a.arrivalTime - b.arrivalTime);
     // queue is ordered by cpu time
-    const readyQu = new PriorityQueue<Process>((cur, toBeAdded) => { return cur.cpuTime < toBeAdded.cpuTime });
+    const readyQu = new PriorityQueue<Process>((cur, toBeAdded) => {return cur.cpuTime < toBeAdded.cpuTime});
     // [process, auxTime]
     const blockedQu: Process[] = [];
     const result: SchedulerReturn = sortedByArrivalTime.map((i => {
@@ -140,7 +140,7 @@ export function SJF(processQueue: Process[]): SchedulerReturn {
             }
         )
     }));
-    while (sortedByArrivalTime.length > 0 || !readyQu.isEmpty()) {
+    while (sortedByArrivalTime.length > 0 || !readyQu.isEmpty() ) {
 
 
         // serve ready qu
@@ -156,14 +156,20 @@ export function SJF(processQueue: Process[]): SchedulerReturn {
             //process will run till reach IO, or if no IO run all cpu time
             const runFor = currentlyRunning.io.length > 0 ? currentlyRunning.io[0].start : currentlyRunning.cpuTime;
             currentlyRunning.cpuTime -= runFor;
+            // because i deacrese the cpu time before handling the blocked queue i need to make all the io intervals relative to the new cpu time
+            // note no need to edit first io interval because it will be deleted from the io array when handled in the bloced queue
+            for (let i = 1; i < currentlyRunning.io.length; ++i) {
+                currentlyRunning.io[i].start -= runFor;
+            }
             // edit last interval in this process to add finish time to ready interval
-            result[i].interval.at(-1)!.finish = curTime;
+            result[i].interval.at(-1)!.finish = curTime; 
             // add running interval
-            result[i].interval.push({ start: curTime, finish: curTime += runFor, status: ProcessStatus.RUNNING })
+            result[i].interval.push({start: curTime, finish: curTime += runFor, status: ProcessStatus.RUNNING })
             // if there's was io so process will need to be added to blocked qu
             if (currentlyRunning.io.length > 0) blockedQu.push(currentlyRunning);
-            // set finish time and turnaround if process finished
-            if (currentlyRunning.cpuTime == 0 && result[i].finishTime == -1) {
+            // set finish time and turnaround if process finished processing cpu time , and all io intervals
+            // if not finished processing all io intervals but finished cpu time, handling blocked queue supposed to set finish time
+            if (currentlyRunning.cpuTime == 0 && result[i].finishTime == -1 && currentlyRunning.io.length == 0) {
                 result[i].finishTime = curTime;
                 result[i].turnaround = result[i].finishTime - result[i].arrivalTime;
             }
@@ -172,11 +178,11 @@ export function SJF(processQueue: Process[]): SchedulerReturn {
 
         // serve io in the backgroung
         if (blockedQu.length > 0) {
-            const curBlocked = blockedQu.shift();
+            const curBlocked= blockedQu.shift();
             const i = result.findIndex((itm) => itm.pid == curBlocked!.pid);
             const io = curBlocked!.io.shift()!.length
             //* add blocked interval NOTE => removing one io interval
-            result[i].interval.push({ start: curTime, finish: curTime + io, status: ProcessStatus.BLOCKED, level: -1 });
+            result[i].interval.push({start: curTime, finish: curTime + io, status: ProcessStatus.BLOCKED});
             // if process didn't finish cpu time add it to be ready again
             if (curBlocked !== undefined && curBlocked.cpuTime > 0) {
                 curBlocked.arrivalTime = curTime + io;
@@ -186,11 +192,17 @@ export function SJF(processQueue: Process[]): SchedulerReturn {
                 //todo maybe change how to sort this list over and over[insertion sort or change it to priority queue]
                 sortedByArrivalTime = sortedByArrivalTime.sort((a, b) => a.arrivalTime - b.arrivalTime);
             }
+            //if process finished processing cpu time but still got in the blocked queue prpcessing means it had to finish io just before leaving, AND THAT SERVING READY QUEUE CODE DIDN'T SET THE FINISH TIME BECAUSE IN SERVING READY QUEUE EYES IT DIDN'T FINISH YET
+            // only set finish and turn around here if the process don't have cpu time
+            if (curBlocked !== undefined && curBlocked.cpuTime == 0) {
+                result[i].finishTime = curTime + io;
+                result[i].turnaround = result[i].finishTime - result[i].arrivalTime;
+            }
         }
 
 
         //fill ready queue when process arrival time arrive, and add ready interval start for this process
-        while (sortedByArrivalTime.length > 0 && curTime >= sortedByArrivalTime[0].arrivalTime) {
+        while (sortedByArrivalTime.length > 0 && curTime >= sortedByArrivalTime[0].arrivalTime ) {
             const proc = sortedByArrivalTime.shift() as Process;
             if (proc.cpuTime <= 0) {
                 continue;
@@ -198,7 +210,7 @@ export function SJF(processQueue: Process[]): SchedulerReturn {
             readyQu.enqueue(proc);
             const i = result.findIndex((itm) => itm.pid == proc.pid);
             // note finish time will be set when the process run
-            result[i].interval.push({ start: proc.arrivalTime, finish: -1, status: ProcessStatus.READY, level: -1 })
+            result[i].interval.push({start: proc.arrivalTime, finish: -1, status: ProcessStatus.READY})
         }
 
 
