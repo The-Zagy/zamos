@@ -13,7 +13,7 @@ import { hideBin }  from 'yargs/helpers';
 
 // define cli constrains
 const argv = yargs(hideBin(process.argv))
-    .usage('zamos [command] --opt [val]')
+    .usage('Zamos is a system monitor built for Linux\nzamos [command] --opt [val]')
     .command('ps', 'show a snap shot for the system')
     .command('top', 'show real-time status for the system')
     .option('sort', {
