@@ -1,5 +1,7 @@
-import { ReactElement, useEffect, useMemo } from "react";
+import { ReactElement, useEffect, useMemo, useState } from "react";
 import { ProcessStatus, ProcessesFinalStats } from "./lib/types"
+import { PlusIcon } from "@heroicons/react/24/outline";
+import { MinusIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 // Define a function to generate the class names for the cells based on the status of the process
 function getClassNames(status: ProcessStatus | undefined, base: string): string {
@@ -14,15 +16,29 @@ function getClassNames(status: ProcessStatus | undefined, base: string): string 
             return "bg-white" + " " + base;
     }
 }
+function getWidthAndHeight(zoomLevel: number) {
+    return `w-${zoomLevel} h-${zoomLevel} `
+}
 const GanttChart: React.FC<{ processes: ProcessesFinalStats }> = ({ processes }) => {
     console.log(processes)
     const findMaxFinishTime = (processes: ProcessesFinalStats): number => {
         return Math.max(...processes.map((i => i.finishTime)));
     }
+    const [zoom, setZoom] = useState<number>(8);
+    const handleZooming = (zoomType: 1 | -1) => {
+        if (zoomType === 1) {
+            if (zoom === 10) return
+            setZoom((prev => prev + 1));
+            return
+        }
+        if (zoom === 5) return;
+        setZoom((prev => prev - 1));
+
+    }
     const drawNumbersRow = () => {
-        const rowCells: ReactElement[] = [<div className="w-8 h-8 text-center"></div>];
+        const rowCells: ReactElement[] = [<div className={`${getWidthAndHeight(zoom)} text-center`}></div>];
         for (let i = 0; i <= maxFinishTime; i++) {
-            rowCells.push(<div className="w-8 h-8 text-center">{i}</div>)
+            rowCells.push(<div className={`${getWidthAndHeight(zoom)} text-center`}>{i}</div>)
         }
         return rowCells;
     }
@@ -36,7 +52,7 @@ const GanttChart: React.FC<{ processes: ProcessesFinalStats }> = ({ processes })
                 {/**Generate grid with x-axis (cols) length = maxFinishTime & y-axis (rows) length = num of processes */}
                 <div className="flex flex-col">
                     {processes.map((process, index) => {
-                        const rowCells: ReactElement[] = [<div className="w-8 h-8 text-center">{process.pid}</div>];
+                        const rowCells: ReactElement[] = [<div className={`${getWidthAndHeight(zoom)} text-center`}>{process.pid}</div>];
                         for (let i = 0; i <= maxFinishTime; i++) {
                             const currentState = process.interval.find((interval => {
                                 if (interval.start === interval.finish) return false;
@@ -49,7 +65,7 @@ const GanttChart: React.FC<{ processes: ProcessesFinalStats }> = ({ processes })
                                 <div
                                     className={
                                         getClassNames(currentState?.status,
-                                            clsx("w-8 h-8 border-r border-b border-gray-600", { "border-t": index === 0 }, { "border-l": i === 0 }))}>
+                                            clsx(`${getWidthAndHeight(zoom)} border-r border-b border-gray-600`, { "border-t": index === 0 }, { "border-l": i === 0 }))}>
 
                                 </div>)
                         }
@@ -72,6 +88,10 @@ const GanttChart: React.FC<{ processes: ProcessesFinalStats }> = ({ processes })
                 <div>
                     <span>Running</span>
                     <span className="w-3 h-3 ml-2 inline-block bg-green-400"></span>
+                </div>
+                <div className="ml-4 flex flex-row gap-4">
+                    <div><PlusIcon className="text-black w-5 h-5 cursor-pointer" onClick={() => handleZooming(1)} /></div>
+                    <div><MinusIcon className="text-black w-5 h-5 cursor-pointer" onClick={() => handleZooming(-1)} /></div>
                 </div>
             </div>
         </div>

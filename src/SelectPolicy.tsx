@@ -19,7 +19,13 @@ const options: { value: Policies, label: string }[] = [
         label: "Multi-Level Feedback Queue (MLFQ)", value: "MLFQ"
     }
 ]
-const SelectPolicy: React.FC<{ setChoice: React.Dispatch<React.SetStateAction<Policies | null>> }> = ({ setChoice }) => {
+const SelectPolicy: React.FC<{
+    choice: Policies | null,
+    setChoice: React.Dispatch<React.SetStateAction<Policies | null>>
+    setQuantum: React.Dispatch<React.SetStateAction<number>>,
+    quantum: number
+
+}> = ({ choice, setChoice, quantum, setQuantum }) => {
     return (
         <div className="py-10 px-5">
             <Select
@@ -34,6 +40,15 @@ const SelectPolicy: React.FC<{ setChoice: React.Dispatch<React.SetStateAction<Po
                     }
                 }}
             />
+            {choice === "RR" &&
+                <div className="flex gap-2 mt-2">
+                    <label className="text-lg font-semibold">Quantum</label>
+                    <input className="shadow-inner px-2 py-1 outline-none border border-gray-400" type={"number"} value={quantum} onChange={(e) => {
+                        if (+e.target.value <= 0) return
+                        setQuantum(+e.target.value)
+                    }} />
+                </div>
+            }
         </div>
     )
 }
