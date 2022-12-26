@@ -1,0 +1,13 @@
+{
+    "scene": [
+        {
+            "pid": 1,
+            "arrivalTime": 0,
+            "finishTime": -1,
+            "firstRunTime": -1,
+            "cpuTime": 3,
+            "io":[{"start":3,"length":5}],
+            "status": "ready"
+        }
+    ]
+}
