@@ -6,7 +6,7 @@ import Navbar from './Navbar'
 import ProcessForm from './ProcessForm'
 import SelectPolicy, { Policies } from './SelectPolicy'
 import ResultsTable from './ResultsTable'
-import { MultiLevelFeedbackQueue, RoundRobin, SJF, firstInFirstOut, shortestTimeToCompletion } from './lib/scheduling-policies'
+import { MultiLevelFeedbackQueue, RoundRobin, SJF, firstInFirstOut, shortestTimeToCompletionFirst } from './lib/scheduling-policies'
 import { cloneDeep } from 'lodash'
 import Footer from './Footer'
 const simulate = (policy: Policies, processes: Process[], quantum?: number): ProcessFinalStats[] => {
@@ -17,7 +17,7 @@ const simulate = (policy: Policies, processes: Process[], quantum?: number): Pro
     case "SJF":
       return SJF(copy);
     case "SCTF":
-      return shortestTimeToCompletion(copy);
+      return shortestTimeToCompletionFirst(copy);
     case 'MLFQ':
       return MultiLevelFeedbackQueue(copy, { level0: 3, level1: 2, level2: 1 });
     case 'RR':
