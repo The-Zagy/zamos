@@ -1,6 +1,10 @@
 # Zamos Scheduler
 
-a simulator to how the OS scheduler will act with specific processes scenerio 
+a simulator of how the OS scheduler will act with specific processes scenario.
+
+<br/>
+
+The project contains another part which is a CLI that works as a system monitor for Linux systems check [ZAMOSHACKING.md](/ZAMOSHACKING.md) for more information
 
 ## Supported Algo
 
@@ -10,33 +14,41 @@ a simulator to how the OS scheduler will act with specific processes scenerio
 	
 - Shortest Remaining Time First
 	
-- Priority-based (non-preemptive)
-	
-- Priority-based (preemptive)
-	
 - Round Robin
+
+- Multi-Level Feedback Queue
 
 ## Getting Started
 
-> it can work with ".json" file or the program has methods to create random workload
-- the interface the file will be tested against
-```
-enum ProcessStatus  {
-    RUNNING = 'running',
-    READY = 'ready',
-    BLOCKED = 'blocked'
-}
+> It can work with ".json" file if you're using the code in the terminal
 
-interface Process {
-    pid: number;
-    arrivalTime: number;
-    finishTime: number;
-    firstRunTime: number;
-    length?: number;
-    status: ProcessStatus
-}
+> You can use the UI in the [**main branch**](https://github.com/the-Zagy/zamos/tree/main) or use the deployed link [zamos.zagy.tech](https://zamos.zagy.tech/)
 
-```
+- the interface the file will be tested against.
+
+[Example](/src/fifo-example.json)
+
+    ```js
+    enum ProcessStatus  {
+        RUNNING = 'running',
+        READY = 'ready',
+        BLOCKED = 'blocked'
+    }
+
+    interface Process {
+        pid: number;
+        arrivalTime: number;
+        finishTime: number;
+        firstRunTime: number;
+        cpuTime: number;
+        //Meaning start after how many seconds of execution
+        io: { start: number, length: number }[];
+        status: ProcessStatus
+    }
+
+    ```
 - `npm install`
 
-- `npm start -- scene.json` 
+- `npm run build`
+
+- `npm start` or `npm run dev` 
