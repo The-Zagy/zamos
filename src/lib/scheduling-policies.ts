@@ -3,10 +3,11 @@ import { calcResponseTime, calcTurnAroundTime } from "./utils";
 import { PriorityQueue } from "./helpers";
 let processQueue: Process[];
 let quantum: { level2: number, level1: number, level0: number };
+
 export function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
     let yetToCome = processQueue.sort((a, b) => a.arrivalTime - b.arrivalTime);
     let currentTime: number = 0;
-    const readyQueue: { arrive: number, process: Process, executed: number }[] = [];
+    let readyQueue: { arrive: number, process: Process, executed: number }[] = [];
     let blockedQueue: { process: Process, releaseTime: number, executed: number }[] = [];
     let currentlyRunning: null | Process = null;
     let currentlyRunningTime: number = 0;
@@ -49,9 +50,12 @@ export function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
                 return false
             })
             if (canditate === -1) break;
-            readyQueue.push({ process: blockedQueue[canditate].process, arrive: currentTime, executed: blockedQueue[canditate].executed });
+            readyQueue.push({ process: blockedQueue[canditate].process, arrive: blockedQueue[canditate].releaseTime, executed: blockedQueue[canditate].executed });
             blockedQueue.splice(canditate, 1);
         }
+
+        readyQueue = readyQueue.sort((p1, p2) => p1.process.arrivalTime - p2.process.arrivalTime);
+
         //if nothing is running dequeue from ready queue, that is if the queue isn't empty.
         //if it is indeed empty just wait for the next second maybe it won't be.
         if (currentlyRunning === null) {
@@ -70,11 +74,6 @@ export function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
             }
         }
 
-        //Manipulate current running process and increment running time
-        currentlyRunning.cpuTime--;
-        currentlyRunningTime++;
-        currentTime++;
-
         //Check if there's any i/o block if it is queue currently running into blocked queue
         //and set currentlyRunning to null
         if (currentlyRunning.io.find((i) => i.start === currentlyRunningTime)) {
@@ -92,13 +91,18 @@ export function firstInFirstOut(processQueue: Process[]): SchedulerReturn {
         }
         //other wise check if it's cputime is over and also set it to null
         else if (currentlyRunning.cpuTime === 0) {
-
             let index = result.findIndex(i => i.pid === currentlyRunning!.pid);
             result[index].interval.push({ start: currentlyRunningStartTime, finish: currentTime, status: ProcessStatus.RUNNING });
             result[index].finishTime = currentTime;
             result[index].firstRunTime = currentlyRunning.firstRunTime;
             currentlyRunning = null;
             currentlyRunningTime = 0;
+        }
+        else {
+            //Manipulate current running process and increment running time
+            currentlyRunning.cpuTime--;
+            currentTime++;
+            currentlyRunningTime++;
         }
 
     }

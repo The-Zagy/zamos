@@ -80,6 +80,7 @@ const ProcessForm: React.FC<{ processes: Process[], setProcesses: React.Dispatch
                     let ioFormat: [number, number][] = [];
                     try {
                         ioFormat = JSON.parse(temp);
+                        ioFormat = ioFormat.sort((a, b) => a[0] - b[0]);
                     }
                     catch (err) {
                         helpers.setFieldError("io", "I/O is not in the format specified");
@@ -94,7 +95,6 @@ const ProcessForm: React.FC<{ processes: Process[], setProcesses: React.Dispatch
                         pid: +values.pid,
                         status: ProcessStatus.READY
                     }
-                    console.log(newProcess)
                     try {
                         checkIntegrityOfInput(newProcess);
                     }
