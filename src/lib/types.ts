@@ -24,6 +24,7 @@ export type ProcessFinalStats = {
     arrivalTime: number,
     interval: Interval
 }
+export type MLFQQuanta = { level2: number, level1: number, level0: number }
 
 export type ProcessesFinalStats = Array<ProcessFinalStats>
 export type Interval = { start: number, finish: number, status: ProcessStatus, level?: number }[]

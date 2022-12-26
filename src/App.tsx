@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 
 import GanttChart from './GanttChart'
-import { Process, ProcessFinalStats, ProcessStatus, SchedulerReturn } from './lib/types'
+import { MLFQQuanta, Process, ProcessFinalStats, ProcessStatus, SchedulerReturn } from './lib/types'
 import Navbar from './Navbar'
 import ProcessForm from './ProcessForm'
 import SelectPolicy, { Policies } from './SelectPolicy'
@@ -9,7 +9,8 @@ import ResultsTable from './ResultsTable'
 import { MultiLevelFeedbackQueue, RoundRobin, SJF, firstInFirstOut, shortestTimeToCompletionFirst } from './lib/scheduling-policies'
 import { cloneDeep } from 'lodash'
 import Footer from './Footer'
-const simulate = (policy: Policies, processes: Process[], quantum?: number, quantumLengths?: number[]): ProcessFinalStats[] => {
+const defaultMLFQQuanta: MLFQQuanta = { level0: 3, level1: 2, level2: 1 }
+const simulate = (policy: Policies, processes: Process[], quantum?: number, quantumLengths?: MLFQQuanta): ProcessFinalStats[] => {
   const copy = cloneDeep(processes)
   switch (policy) {
     case 'FIFO':
@@ -19,7 +20,7 @@ const simulate = (policy: Policies, processes: Process[], quantum?: number, quan
     case "SCTF":
       return shortestTimeToCompletionFirst(copy);
     case 'MLFQ':
-      return MultiLevelFeedbackQueue(copy, {level0: quantumLengths![2] || 3, level1: quantumLengths![1] || 2, level2: quantumLengths![0] || 1 });
+      return MultiLevelFeedbackQueue(copy, quantumLengths || defaultMLFQQuanta);
     case 'RR':
       return RoundRobin(copy, quantum || 3);
     default:
@@ -30,7 +31,7 @@ const simulate = (policy: Policies, processes: Process[], quantum?: number, quan
 function App() {
   const [choice, setChoice] = useState<Policies | null>(null);
   const [quantum, setQuantum] = useState<number>(3);
-  const [quantumLengths, setQuantumLengths] = useState<number[]>([3, 2, 1]);
+  const [quantumLengths, setQuantumLengths] = useState<MLFQQuanta>(defaultMLFQQuanta);
   const [processes, setProcesses] = useState<Process[]>([]);
   const [finalProcesses, setFinalProcesses] = useState<ProcessFinalStats[]>([]);
   const handleSimulate = () => {
