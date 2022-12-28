@@ -22,3 +22,19 @@ You can check our project which is a CLI that works as a system monitor for Linu
 `npm install`
 `npm run dev`
 to start developing
+
+## TODO
+
+The project has low priority right now but if you want to contribute here are a few ideas
+
+- Make the scheduling code more modular because it contains a lot of repeated code
+
+- Make MLFQ code more general by making the number of levels variable, right now it's fixed to 3
+
+- We need tests ... a lot of them to be honest
+
+- Make a compact timeline and give the user the ablitiy to switch between it and the current gannt chart, it looks something like this where the running intervals of each process only shows |1 1 1| 2 2 |
+
+- Not really a todo but if you want to add a new scheduling policy you're more than welcome to do so
+
+
