@@ -2,6 +2,8 @@
 
 a simulator of how the OS scheduler will act with specific processes scenarios 
 
+you can check the deployment [here](zamos.zagy.tech/)
+
 <br/>
 
 You can check our project which is a CLI that works as a system monitor for Linux systems check [ps-cli/ZAMOSHACKING.md](https://github.com/The-Zagy/zamos/blob/ps-cli/ZAMOSHACKING.md) for more information
