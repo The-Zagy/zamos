@@ -2,7 +2,7 @@
 
 a simulator of how the OS scheduler will act with specific processes scenarios 
 
-you can check the deployment [here](zamos.zagy.tech/)
+you can check the deployment [here](https://zamos.zagy.tech/)
 
 <br/>
 
